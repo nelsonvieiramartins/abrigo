@@ -59,8 +59,8 @@ export function mountCreatureEditor(characterPreview:ReturnType<typeof createPre
     active=creatures;characterWorkspace.hidden=creatures;workspace.hidden=!creatures;characterPreview?.setActive(!creatures);preview?.setActive(creatures);
     const villains=characterWorkspace.dataset.characterCategory==='villains';
     nav.querySelector('#mode-characters')!.setAttribute('aria-pressed',String(!creatures&&!villains));nav.querySelector('#mode-villains')?.setAttribute('aria-pressed',String(!creatures&&villains));nav.querySelector('#mode-creatures')!.setAttribute('aria-pressed',String(creatures));
-    header.querySelector('.brand small')!.textContent=creatures?'CRIATURAS':villains?'PERSONAGENS VILÕES':'PERSONAGENS';header.querySelector('#export span')!.textContent=creatures?'Exportar criatura':'Exportar personagem';
-    header.querySelector('.project-status')!.innerHTML='<i></i> '+(creatures?'BESTIÁRIO DA FLORESTA':villains?'OFICINA DE VILÕES':'OFICINA DE SOBREVIVENTES')+' <span class="version">V1.1</span>';
+    header.querySelector('.brand small')!.textContent=creatures?'CRIATURAS':villains?'PERSONAGEM ZUMBI':'PERSONAGENS';header.querySelector('#export span')!.textContent=creatures?'Exportar criatura':'Exportar personagem';
+    header.querySelector('.project-status')!.innerHTML='<i></i> '+(creatures?'BESTIÁRIO DA FLORESTA':villains?'OFICINA DE ZUMBIS':'OFICINA DE SOBREVIVENTES')+' <span class="version">V1.1</span>';
     if(creatures&&!preview){try{preview=createPreview($('#creature-viewport'),s=>$('#creature-stats').textContent=Math.round(s.triangles).toLocaleString('pt-BR')+' triângulos · '+s.meshes+' peças');preview.setCreature(spec);preview.view('iso');if(preview.compatible)$('#creature-render-mode').textContent='MODO COMPATÍVEL';}catch(e){$('#creature-stats').textContent='Prévia indisponível';notify((e as Error).message);}}
     if(creatures&&storageError){notify(storageError);storageError='';}
   }

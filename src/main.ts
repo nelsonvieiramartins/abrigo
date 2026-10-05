@@ -1,3 +1,4 @@
+import {loadZombiePresets,saveZombiePreset} from './zombie-presets';
 import {icon} from './icons';
 import {mountGameTest} from './game-test';
 import {loadItemSetup,restoreItemSetup,saveItemSetup} from './item-setups';
@@ -26,6 +27,7 @@ const itemInteraction=()=>spec.items.object==='custom'?spec.items.recipe?.intera
 if(requestedPreset&&Object.hasOwn(OPTIONS.profession,requestedPreset)){if(requestedPreset!=='zumbi'||spec.profession!=='zumbi')spec=presetCharacter(requestedPreset);preset=requestedPreset;category=categoryOf(spec);}
 try{spec=restoreItemSetup(categoryStorage,spec);}catch{}
 let history:CharacterSpec[]=[],future:CharacterSpec[]=[],committed=clone(spec),saveTimer:number,preview:ReturnType<typeof createPreview>|null=null;
+let selectedZombiePreset='';
 const categoryDrafts:Partial<Record<CharacterCategory,CharacterSpec>>={};
 const app=$('#app');
 app.innerHTML=`
@@ -34,6 +36,7 @@ app.innerHTML=`
 <aside class="archive"><div class="section-eyebrow">PONTO DE PARTIDA</div><h1>Todo mundo<br>tem uma história.</h1><p class="intro">Escolha uma base.<br>Faça dela alguém único.</p><div class="presets" aria-label="Modelos iniciais">${[
  ['zumbi','user','Zumbi','Ainda caminha pela floresta.'],['lenhador','mountain','Lenhador','Talhado pela floresta.'],['nightshift','user','Atendente noturna','Sabe ler qualquer ambiente.'],['pintor','user','Pintor','Um novo olhar para o mundo.'],['ranger','mountain','Guarda florestal','Conhece o caminho.'],['mechanic','wrench','Mecânico','Sempre dá um jeito.'],['medic','medical','Socorrista','Ainda cuida dos outros.'],['civilian','user','Civil','Uma vida interrompida.'],['legendario','flag','Legendário','Forjado na trilha.'],['explorer','compass','Exploradora','Vê primeiro, age depois.'],['pedepano','sock','Pé de Pano','Ninguém ouve chegar.'],['engineer','gear','Engenheira','Conserta o que o mundo quebrou.']
 ].map(([id,ic,name,desc],i)=>`<button class="preset ${preset===id?'selected':''}" data-preset="${id}"><span class="preset-icon">${icon(ic,23)}</span><span><strong>${name}</strong><small>${desc}</small></span><span class="preset-check">${icon('check',13)}</span></button>`).join('')}</div>
+<section id="zombie-library" class="zombie-library" hidden aria-label="Presets de zumbis"></section>
 <div class="seed-card"><div class="section-eyebrow">GERAÇÃO PROCEDURAL ${icon('dice',15)}</div><label for="seed">Semente do personagem</label><div class="seed-row"><input id="seed" maxlength="64" value="${esc(spec.seed)}" spellcheck="false"><button id="apply-seed" title="Gerar personagem com esta semente" aria-label="Gerar personagem com esta semente">${icon('arrow')}</button></div><button class="button randomize" id="random">${icon('dice')} Novo sobrevivente</button><p>A mesma semente recria a mesma base.</p></div>
 <div class="archive-footer"><span class="signal"></span> FEITO DE POSSIBILIDADES<small>Geometria e movimento procedurais</small><button id="about" class="text-button">Sobre este projeto ${icon('info',13)}</button></div></aside>
 <section class="stage-column" aria-label="Visualização do personagem">
@@ -61,7 +64,7 @@ function renderPanel(){
  const panel=$('#panel');panel.setAttribute('aria-labelledby','tab-'+tab);
  if(tab==='body')panel.innerHTML=heading('01','Corpo e proporções','A silhueta começa aqui.')+`<div class="field"><label for="name">Nome do personagem</label><input id="name" data-path="name" maxlength="64" value="${esc(spec.name)}"></div>`+select('style','Estilo da malha',{'':'Original',faceted:'Facetado — planos esculpidos'})+palette('appearance.skin','Tom de pele',SKINS)+'<div class="section-line">ESTRUTURA</div>'+range('body.height','Altura',1.5,2,.01,['1,50 m','2,00 m'])+range('body.build','Constituição',0,1,.01,['Esbelta','Robusta'])+range('body.shoulders','Ombros',0,1,.01,['Estreitos','Largos'])+range('body.hips','Quadril',0,1,.01,['Estreito','Largo'])+range('body.bust','Busto',0,1,.01,['Nenhum','Volumoso'])+range('body.head','Proporção da cabeça',.85,1.15,.01);
  if(tab==='hair')panel.innerHTML=heading('02','Pelos','Cabelo, barba e olhos.')+select('appearance.hair','Corte de cabelo',OPTIONS.hair)+palette('appearance.hairColor','Cor do cabelo',HAIR_COLORS)+select('appearance.beard','Barba',OPTIONS.beard)+range('appearance.faceWidth','Largura do rosto',.85,1.15,.01,['Fino','Largo'])+palette('appearance.eyeColor','Cor dos olhos',['#3e5148','#665141','#4a5962','#292622','#8a5716'])+toggle('appearance.makeup','Delineado e batom','Traço alado nos olhos, lábios mais vermelhos.')+`<div class="panel-note">${icon('info',17)}<span>Use a vista <b>Rosto</b> para ver os detalhes.${spec.outfit.hat!=='none'?' O cabelo fica oculto sob o acessório.':''}</span></div>`;
- if(tab==='clothes')panel.innerHTML=heading('05','Camadas do dia a dia',category==='villains'?'Guarda-roupa dos vilões.':'Pronto para o que vier.')+select('outfit.top','Parte superior',categoryOptions(OPTIONS.top,category,'top'))+palette('outfit.topColor','Cor da roupa',CLOTH_COLORS)+'<div class="section-line">PARTE INFERIOR</div>'+select('outfit.pants','Calça ou bermuda',OPTIONS.pants)+palette('outfit.pantsColor','Cor da parte inferior',CLOTH_COLORS)+select('outfit.shoes','Calçados',OPTIONS.shoes)+palette('outfit.shoeColor','Cor dos calçados',['#302922','#4c4438','#535452','#aa9c82']);
+ if(tab==='clothes')panel.innerHTML=heading('05','Camadas do dia a dia',category==='villains'?'Guarda-roupa dos zumbis.':'Pronto para o que vier.')+select('outfit.top','Parte superior',categoryOptions(OPTIONS.top,category,'top'))+palette('outfit.topColor','Cor da roupa',CLOTH_COLORS)+'<div class="section-line">PARTE INFERIOR</div>'+select('outfit.pants','Calça ou bermuda',OPTIONS.pants)+palette('outfit.pantsColor','Cor da parte inferior',CLOTH_COLORS)+select('outfit.shoes','Calçados',OPTIONS.shoes)+palette('outfit.shoeColor','Cor dos calçados',['#302922','#4c4438','#535452','#aa9c82']);
  if(tab==='gear')panel.innerHTML=heading('06','O que você carrega','Pequenas escolhas. Novos caminhos.')+select('outfit.hat','Acessório de cabeça',OPTIONS.hat)+toggle('outfit.backpack','Mochila de campo','Com alças, bolsos e fivelas.')+toggle('outfit.glasses','Óculos','Armação discreta.')+toggle('outfit.gloves','Luvas de couro','Punhos enrolados em tiras.')+toggle('outfit.toolBelt','Cinto de ferramentas','Fivela de engrenagem, bolsas e tiras na coxa.')+'<div class="section-line">MARCAS DO CAMINHO</div>'+range('wear','Desgaste das roupas',0,1,.01,['Novas','Muito usadas'])+`<div class="panel-note">${icon('info',17)}<span>O equipamento acompanha o corpo durante as animações.</span></div>`;
  if(tab==='items'){
    const interaction=spec.items.object==='none'?undefined:itemInteraction();
@@ -107,16 +110,28 @@ function summary(){
 function update(rebuild=true){summary();if(rebuild)preview?.setCharacter(spec);scheduleSave();}
 function commit(){if(JSON.stringify(committed)!==JSON.stringify(spec)){history.push(clone(committed));history=history.slice(-30);future=[];committed=clone(spec);summary();}}
 function replace(next:CharacterSpec,presetId=''){if(categoryOf(next)!==category)switchCategory(categoryOf(next));spec=next;preset=presetId;commit();renderPanel();($('#seed') as HTMLInputElement).value=spec.seed;update();}
+function renderZombieLibrary(){
+ const library=$('#zombie-library');library.hidden=category!=='villains';if(library.hidden)return;
+ const name=library.querySelector<HTMLInputElement>('#zombie-preset-name')?.value??spec.name;
+ try{
+  const presets=loadZombiePresets(localStorage),selected=presets.find(p=>p.id===selectedZombiePreset);
+  library.innerHTML='<div class="section-eyebrow">PRESETS DE ZUMBIS</div><label for="zombie-preset-name">Nome do preset</label>'+ `<input id="zombie-preset-name" maxlength="64" value="${esc(name)}" placeholder="Ex.: Zumbi da mata"><button class="button save-button" data-zombie-new>Salvar novo preset</button>`+
+   (selected?`<button class="button quiet" data-zombie-update>Atualizar “${esc(selected.name)}”</button>`:'')+
+   '<p>Receita completa salva neste navegador. Alterações só substituem um preset ao clicar em Atualizar.</p><div class="zombie-preset-list">'+
+   (presets.length?presets.map(p=>`<button class="preset ${selected?.id===p.id?'selected':''}" data-zombie-load="${esc(p.id)}"><span><strong>${esc(p.name)}</strong><small>Carregar · semente ${esc(p.spec.seed)}</small></span></button>`).join(''):'<p>Nenhum preset salvo ainda.</p>')+'</div>';
+ }catch{library.innerHTML='<p>Não foi possível ler a biblioteca. Os presets existentes não foram apagados. Verifique o armazenamento do navegador.</p>';}
+}
 function categoryChrome(){
+ renderZombieLibrary();
  const villains=category==='villains',workspace=$('.workspace');workspace.dataset.characterCategory=category;
  document.querySelectorAll<HTMLElement>('[data-preset]').forEach(el=>el.hidden=(el.dataset.preset==='zumbi')!==villains);
- $('.seed-card label').textContent=villains?'Semente do vilão':'Semente do personagem';
- $('#random').innerHTML=icon('dice')+(villains?' Novo vilão':' Novo sobrevivente');
+ $('.seed-card label').textContent=villains?'Semente do zumbi':'Semente do personagem';
+ $('#random').innerHTML=icon('dice')+(villains?' Novo zumbi':' Novo sobrevivente');
  $('.archive h1').innerHTML=villains?'Cada ameaça<br>tem uma origem.':'Todo mundo<br>tem uma história.';
- $('.stage-heading .section-eyebrow').textContent=villains?'REGISTRO DE VILÃO':'REGISTRO DE SOBREVIVENTE';
+ $('.stage-heading .section-eyebrow').textContent=villains?'REGISTRO DE ZUMBI':'REGISTRO DE SOBREVIVENTE';
  if(!workspace.hidden){
-   $('.topbar .brand small').textContent=villains?'PERSONAGENS VILÕES':'PERSONAGENS';
-   $('.topbar .project-status').innerHTML='<i></i> '+(villains?'OFICINA DE VILÕES':'OFICINA DE SOBREVIVENTES')+' <span class="version">V1.1</span>';
+   $('.topbar .brand small').textContent=villains?'PERSONAGEM ZUMBI':'PERSONAGENS';
+   $('.topbar .project-status').innerHTML='<i></i> '+(villains?'OFICINA DE ZUMBIS':'OFICINA DE SOBREVIVENTES')+' <span class="version">V1.1</span>';
    $('#export span').textContent='Exportar personagem';
    $('#mode-characters')?.setAttribute('aria-pressed',String(!villains));$('#mode-villains')?.setAttribute('aria-pressed',String(villains));
  }
@@ -182,6 +197,11 @@ app.addEventListener('click',event=>{
  if(b.dataset.faceReset!==undefined){faceStore.overrides={};saveFaces();renderPanel();toast('Tipos originais restaurados.');}
  if(b.dataset.expression){expression=b.dataset.expression as Expression;preview?.setExpression(expression,intensity);document.querySelectorAll('[data-expression]').forEach(el=>el.classList.toggle('selected',el===b));}
  if(b.dataset.tab){if((b.dataset.tab==='face'||b.dataset.tab==='features')&&preview){preview.view('portrait');document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.getAttribute('data-view')==='portrait'));}tab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(el=>{const active=el.getAttribute('data-tab')===tab;el.classList.toggle('active',active);el.setAttribute('aria-selected',String(active));});renderPanel();$('#panel').scrollTop=0;}
+ if(b.dataset.preset){selectedZombiePreset='';}
+ if(b.dataset.zombieNew!==undefined||b.dataset.zombieUpdate!==undefined){
+  try{const name=$<HTMLInputElement>('#zombie-preset-name').value;const saved=saveZombiePreset(localStorage,spec,name,b.dataset.zombieUpdate!==undefined?selectedZombiePreset:undefined);selectedZombiePreset=saved.id;renderZombieLibrary();toast('Preset de zumbi salvo. Disponível após recarregar o jogo.');}catch(e){toast((e as Error).message);}return;
+ }
+ if(b.dataset.zombieLoad){try{const saved=loadZombiePresets(localStorage).find(p=>p.id===b.dataset.zombieLoad);if(!saved)throw Error('Preset não encontrado.');selectedZombiePreset=saved.id;$<HTMLInputElement>('#zombie-preset-name').value=saved.name;replace(clone(saved.spec));toast('Preset de zumbi carregado.');}catch(e){toast((e as Error).message);}return;}
  if(b.dataset.preset)replace(presetCharacter(b.dataset.preset),b.dataset.preset);
  if(b.dataset.colorPath){write(b.dataset.colorPath,b.dataset.color);preset='';commit();renderPanel();update();}
  if(b.dataset.view){preview?.view(b.dataset.view);document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el===b));}
@@ -195,7 +215,7 @@ app.addEventListener('click',event=>{
    }preset='';commit();renderPanel();update(false);
  }
 });
-$('#random').onclick=()=>{const a=new Uint32Array(1);crypto.getRandomValues(a);replace(category==='villains'?randomVillain(String(a[0])):randomCharacter(String(a[0])));toast(category==='villains'?'Um novo vilão foi criado.':'Um novo sobrevivente chegou.');};
+$('#random').onclick=()=>{const a=new Uint32Array(1);crypto.getRandomValues(a);replace(category==='villains'?randomVillain(String(a[0])):randomCharacter(String(a[0])));toast(category==='villains'?'Um novo zumbi foi criado.':'Um novo sobrevivente chegou.');};
 $('#apply-seed').onclick=()=>{const seed=$<HTMLInputElement>('#seed').value.trim();if(!seed){toast('Digite uma semente.');return;}replace(category==='villains'?randomVillain(seed):randomCharacter(seed));toast('Personagem gerado com a semente '+seed+'.');};
 $('#seed').onkeydown=e=>{if(e.key==='Enter')$('#apply-seed').click();};
 $('#save').onclick=()=>persist(true);$('#export').onclick=()=>{try{exportJson();}catch(e){toast((e as Error).message);}};
@@ -210,9 +230,9 @@ $('#sprites').onclick=async()=>{if(preview){try{download(await preview.spriteShe
 $('#about').onclick=()=>$<HTMLDialogElement>('#about-dialog').showModal();$('.close-dialog').onclick=()=>$<HTMLDialogElement>('#about-dialog').close();
 $('.brand').onclick=e=>e.preventDefault();
 if(!storageAvailable)status('Exporte para salvar');
-(window as any).__ABRIGO__={getSpec:()=>clone(spec),setSpec:(s:CharacterSpec)=>replace(validateSpec(s)),getPreview:()=>preview,randomCharacter,validateSpec};
+(window as any).__ABRIGO__={getSpec:()=>clone(spec),getZombiePresets:()=>loadZombiePresets(localStorage),setSpec:(s:CharacterSpec)=>replace(validateSpec(s)),getPreview:()=>preview,randomCharacter,validateSpec};
 mountCreatureEditor(preview);
-const villainButton=document.createElement('button');villainButton.id='mode-villains';villainButton.textContent='Personagens Vilões';villainButton.setAttribute('aria-pressed','false');
+const villainButton=document.createElement('button');villainButton.id='mode-villains';villainButton.textContent='Personagem Zumbi';villainButton.setAttribute('aria-pressed','false');
 $('#mode-characters').after(villainButton);
 villainButton.addEventListener('click',()=>switchCategory('villains'));
 $('#mode-characters').addEventListener('click',()=>switchCategory('characters'));

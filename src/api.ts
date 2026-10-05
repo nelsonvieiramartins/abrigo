@@ -1,4 +1,6 @@
 export {createCharacter,EXPRESSIONS} from './character';
+export {loadZombiePresets,saveZombiePreset,ZOMBIE_PRESETS_STORE} from './zombie-presets';
+export type {ZombiePreset} from './zombie-presets';
 export {DEFAULT,randomCharacter,presetCharacter,validateSpec,characterStats,clone} from './schema';
 export type {CharacterSpec,Motion} from './schema';
 export type {CharacterModel,CharacterOptions,Detail,Expression} from './character';

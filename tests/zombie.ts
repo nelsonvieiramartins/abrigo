@@ -1,3 +1,4 @@
+import './zombie-presets';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createCharacter,EXPRESSIONS} from '../src/character';
