@@ -1,0 +1,67 @@
+--- a/creature.ts
++++ b/creature.ts
+@@ -1,5 +1,6 @@
+ import * as THREE from 'three';
+ import {seededRandom} from './schema';
++import {buildDetailedSkeleton} from './skeleton-detail';
+ import {buildFacetedWolf} from './wolf-simple';
+ import {buildDetailedWolf} from './wolf-detail';
+ import {wolfGait} from './wolf-gait';
+@@ -33,7 +34,9 @@
+   const socket=(name:string,parent:THREE.Object3D,pos=[0,0,0])=>sockets[name]=group('socket-'+name,parent,pos);
+   const body=group('body',root,[0,0,0]),bulk=.85+spec.body.bulk*.3;
+   let animate=(t:number,m:CreatureMotion)=>{};
+-  if(spec.species==='wolf'&&spec.wolf){
++  if(spec.species==='skeleton'){
++    animate=buildDetailedSkeleton(spec,{body,nodes,sockets,geometries,materials},detail);
++  }else if(spec.species==='wolf'&&spec.wolf){
+     animate=buildFacetedWolf(spec,{body,nodes,sockets,geometries,materials},detail);
+   }else if(spec.species==='scorpion'){
+     animate=buildDetailedScorpion(spec,{body,nodes,sockets,geometries,materials},detail);
+@@ -128,7 +131,7 @@
+     const point=(u:number,t:number,m:CreatureMotion)=>new THREE.Vector3(Math.sin(u*Math.PI*3-t*(m==='move'?4:1)+phase)*.16*Math.sin(u*Math.PI),radius+(m==='attack'?Math.pow(1-u,4)*.32*(.5+.5*Math.sin(t*5)):0),length*(.5-u));
+     animate=(t,m)=>{for(let i=0;i<=rows;i++){const u=i/rows,p=point(u,t,m),r=radius*(1-.96*Math.pow(u,3));for(let j=0;j<=sides;j++){const a=j/sides*Math.PI*2,k=(i*(sides+1)+j)*3;positions[k]=p.x+Math.sin(a)*r;positions[k+1]=p.y+Math.cos(a)*r;positions[k+2]=p.z;}}geo.attributes.position.needsUpdate=true;geo.computeVertexNormals();geo.computeBoundingSphere();head.position.copy(point(0,t,m));const dir=point(0,t,m).sub(point(.02,t,m));head.rotation.y=Math.atan2(dir.x,dir.z);tongue.scale.z=.6+Math.max(0,Math.sin(t*6))*.6;};
+   }
+-  const update=(time:number,motion:CreatureMotion='idle')=>{if(!Number.isFinite(time)||!['idle','move','run','attack'].includes(motion))throw new Error('Tempo ou movimento de criatura inválido.');if(motion==='run'&&!['wolf','werewolf','spider','scorpion'].includes(spec.species))throw new Error('Corrida disponível apenas para lobos, lobisomens, aranhas e escorpiões.');animate(time,motion);};
++  const update=(time:number,motion:CreatureMotion='idle')=>{if(!Number.isFinite(time)||!['idle','move','run','attack'].includes(motion))throw new Error('Tempo ou movimento de criatura inválido.');if(motion==='run'&&!['wolf','werewolf','spider','scorpion','skeleton'].includes(spec.species))throw new Error('Corrida disponível apenas para lobos, lobisomens, aranhas, escorpiões e esqueletos.');animate(time,motion);};
+   update(0);let triangles=0,meshes=0;root.traverse((o:any)=>{if(o.isMesh){meshes++;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1);}});
+   let disposed=false;
+   return {root,nodes,sockets,detail,stats:{triangles,meshes},update,dispose(){if(disposed)return;disposed=true;root.traverse(o=>{if(o instanceof THREE.InstancedMesh)o.dispose();});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());root.removeFromParent();}};
+--- a/creature-schema.ts
++++ b/creature-schema.ts
+@@ -1,6 +1,6 @@
+ import {seededRandom} from './schema';
+ 
+-export const CREATURE_SPECIES = {wolf:'Lobo',werewolf:'Lobisomem',bat:'Morcego',swarm:'Enxame',snake:'Cobra',spider:'Aranha',scorpion:'Escorpião'} as const;
++export const CREATURE_SPECIES = {wolf:'Lobo',werewolf:'Lobisomem',bat:'Morcego',swarm:'Enxame',snake:'Cobra',spider:'Aranha',scorpion:'Escorpião',skeleton:'Esqueleto'} as const;
+ export type CreatureSpecies = keyof typeof CREATURE_SPECIES;
+ export type CreatureMotion = 'idle'|'move'|'run'|'attack';
+ export type CreatureDetail = 'low'|'high';
+@@ -39,6 +39,7 @@
+   behavior:{temperament:'defensive'|'territorial'|'aggressive';health:number;damage:number;speed:number;detection:number;venomous:boolean};
+ }
+ export const CREATURE_FIELDS:Record<CreatureSpecies,Array<{key:keyof CreatureSpec['anatomy'];label:string;min:number;max:number;step:number}>>={
++  skeleton:[{key:'legs',label:'Comprimento das pernas',min:.85,max:1.15,step:.01},{key:'thickness',label:'Espessura dos ossos',min:.8,max:1.2,step:.01},{key:'spread',label:'Largura do tórax',min:.85,max:1.15,step:.01}],
+   scorpion:[{key:'legs',label:'Comprimento das patas',min:.7,max:1.3,step:.01},{key:'spread',label:'Abertura das patas',min:.7,max:1.3,step:.01},{key:'thickness',label:'Espessura das patas',min:.7,max:1.3,step:.01},{key:'tail',label:'Tamanho da cauda',min:.7,max:1.3,step:.01}],
+   spider:[{key:'legs',label:'Comprimento das patas',min:.7,max:1.3,step:.01},{key:'spread',label:'Abertura das patas',min:.7,max:1.3,step:.01},{key:'thickness',label:'Espessura das patas',min:.7,max:1.3,step:.01}],
+   werewolf:[{key:'legs',label:'Comprimento das patas',min:.7,max:1.3,step:.01},{key:'tail',label:'Comprimento da cauda',min:.5,max:1.5,step:.01},{key:'ears',label:'Tamanho das orelhas',min:.7,max:1.4,step:.01}],
+@@ -49,8 +50,9 @@
+ };
+ export function presetCreature(species:CreatureSpecies):CreatureSpec {
+   if(!Object.hasOwn(CREATURE_SPECIES,species))throw new Error('Espécie de criatura inválida.');
+-  const colors={wolf:['#73766b','#c0baa3'],werewolf:['#858974','#d8d4b8'],bat:['#2f2a2f','#4a3f46'],swarm:['#c6a44c','#252b23'],snake:['#677348','#c8b878'],spider:['#51483f','#756353'],scorpion:['#51483f','#756353']}[species];
+-  const result:CreatureSpec={kind:'creature',schemaVersion:1,species,name:{wolf:'Lobo da mata',werewolf:'Lobisomem',bat:'Morcego da gruta',swarm:'Enxame de vespas',snake:'Víbora da floresta',spider:'Aranha da mata',scorpion:'Escorpião da mata'}[species],seed:'floresta-2407',body:{scale:1,bulk:.5},appearance:{primary:colors[0],secondary:colors[1],eyes:species==='werewolf'?'#e7ad32':'#dfac49',markings:.55},anatomy:{legs:1,tail:1,ears:1,wingspan:1,count:48,spread:.85,length:1,thickness:1},behavior:{temperament:species==='werewolf'?'aggressive':'territorial',health:{scorpion:45,spider:35,wolf:80,werewolf:180,bat:20,swarm:35,snake:30}[species],damage:{scorpion:14,spider:9,wolf:18,werewolf:32,bat:5,swarm:8,snake:12}[species],speed:{scorpion:1.7,spider:2,wolf:4,werewolf:5,bat:5,swarm:3,snake:1.5}[species],detection:12,venomous:species==='snake'||species==='spider'||species==='scorpion'}};
++  const colors={wolf:['#73766b','#c0baa3'],werewolf:['#858974','#d8d4b8'],bat:['#2f2a2f','#4a3f46'],swarm:['#c6a44c','#252b23'],snake:['#677348','#c8b878'],spider:['#51483f','#756353'],scorpion:['#51483f','#756353'],skeleton:['#d5c3a5','#ac967a']}[species];
++  const result:CreatureSpec={kind:'creature',schemaVersion:1,species,name:{wolf:'Lobo da mata',werewolf:'Lobisomem',bat:'Morcego da gruta',swarm:'Enxame de vespas',snake:'Víbora da floresta',spider:'Aranha da mata',scorpion:'Escorpião da mata',skeleton:'Esqueleto'}[species],seed:'floresta-2407',body:{scale:1,bulk:.5},appearance:{primary:colors[0],secondary:colors[1],eyes:species==='werewolf'?'#e7ad32':'#dfac49',markings:.55},anatomy:{legs:1,tail:1,ears:1,wingspan:1,count:48,spread:.85,length:1,thickness:1},behavior:{temperament:species==='werewolf'?'aggressive':'territorial',health:{skeleton:60,scorpion:45,spider:35,wolf:80,werewolf:180,bat:20,swarm:35,snake:30}[species],damage:{skeleton:12,scorpion:14,spider:9,wolf:18,werewolf:32,bat:5,swarm:8,snake:12}[species],speed:{skeleton:2,scorpion:1.7,spider:2,wolf:4,werewolf:5,bat:5,swarm:3,snake:1.5}[species],detection:12,venomous:species==='snake'||species==='spider'||species==='scorpion'}};
++  if(species==='skeleton'){result.anatomy.spread=1;result.appearance.eyes='#29241d';result.appearance.markings=0;result.behavior.temperament='aggressive';}
+   if(species==='spider'){result.spider={...SPIDER_SHAPE_DEFAULTS};result.appearance.eyes='#151412';result.anatomy.spread=1;}
+   if(species==='scorpion'){result.scorpion={...SCORPION_SHAPE_DEFAULTS};result.appearance.eyes='#151412';result.anatomy.spread=1;}
+   return result;
+@@ -104,6 +106,7 @@
+   const s=presetCreature(species),r=seededRandom(seed+':creature:'+species),n=(a:number,b:number)=>Math.round((a+r()*(b-a))*100)/100;
+   s.seed=seed;s.body={scale:n(.8,1.2),bulk:n(.2,.9)};s.appearance.markings=n(.15,.95);
+   const palettes=[['#666b62','#c1bca4'],['#655044','#b69774'],['#343a39','#818a79'],['#847965','#d1c9a8']];
++  if(species==='skeleton')palettes.splice(0,palettes.length,['#d5c3a5','#ac967a'],['#c8b699','#93836c']);
+   const palette=palettes[Math.floor(r()*palettes.length)];s.appearance.primary=palette[0];s.appearance.secondary=palette[1];
+   for(const f of CREATURE_FIELDS[species])s.anatomy[f.key]=f.step===1?Math.round(n(f.min,f.max)):n(f.min,f.max);
+   if(species==='spider')s.spider={...SPIDER_SHAPE_DEFAULTS,legLength:s.anatomy.legs,legSpread:s.anatomy.spread,legThickness:s.anatomy.thickness};

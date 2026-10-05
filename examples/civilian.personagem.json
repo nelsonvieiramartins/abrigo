@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "seed": "2407",
+  "name": "Sam Walker",
+  "body": {
+    "height": 1.78,
+    "build": 0.5,
+    "shoulders": 0.55,
+    "hips": 0.45,
+    "head": 1
+  },
+  "appearance": {
+    "skin": "#cd9b78",
+    "hair": "messy",
+    "hairColor": "#4b3327",
+    "beard": "none",
+    "eyeColor": "#3e5148",
+    "faceWidth": 1
+  },
+  "outfit": {
+    "top": "tank",
+    "topColor": "#803f37",
+    "pants": "shorts",
+    "pantsColor": "#4a4a3e",
+    "shoes": "sneakers",
+    "shoeColor": "#302922",
+    "hat": "none",
+    "backpack": false,
+    "glasses": false
+  },
+  "wear": 0.22,
+  "profession": "civilian",
+  "traits": []
+}

@@ -1,0 +1,5 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>ABRIGO — fábricas Three.js</title><link rel="stylesheet" href="./fabricas.css"></head>
+<body><aside><h1>Fábricas Three.js</h1><p class="hint">Arquivos <code>createXModel()</code> em <code>factories/</code> — o formato do img2threejs e do img2threejs-showcase. Só código: nenhum GLB é carregado.</p><div id="list"></div></aside>
+<main><div id="view"></div><div id="bar"><span id="stats">Escolha uma fábrica.</span><span><button data-v="iso">Iso</button><button data-v="front">Frente</button><button data-v="side">Lado</button><button data-v="ref">Ângulo da ref.</button><button id="snap">PNG</button></span></div></main>
+<section id="panel"><h2 id="title">—</h2><div id="info"></div><h3>REFERÊNCIA</h3><div id="ref"><p class="hint">Coloque uma imagem com o mesmo nome da fábrica (ex.: <code>machado.png</code>) em <code>factories/</code>.</p></div><button id="compare" disabled>Comparar silhueta</button><div id="score"></div><canvas id="diff"></canvas></section>
+<script type="module" src="./fabricas.ts"></script></body></html>

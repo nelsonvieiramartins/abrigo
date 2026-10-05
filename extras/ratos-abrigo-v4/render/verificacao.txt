@@ -1,0 +1,72 @@
+{
+  detail: 'high',
+  variation: 'neutral',
+  meshes: 37,
+  triangles: 2586,
+  materials: 5
+}
+{
+  detail: 'high',
+  variation: 'short-legs-large-paws',
+  meshes: 37,
+  triangles: 2586,
+  materials: 5
+}
+{
+  detail: 'high',
+  variation: 'long-legs-long-tail',
+  meshes: 37,
+  triangles: 2586,
+  materials: 5
+}
+{
+  detail: 'high',
+  variation: 'small-head',
+  meshes: 37,
+  triangles: 2586,
+  materials: 5
+}
+{
+  detail: 'high',
+  variation: 'large-head',
+  meshes: 37,
+  triangles: 2586,
+  materials: 5
+}
+{
+  detail: 'low',
+  variation: 'neutral',
+  meshes: 33,
+  triangles: 1652,
+  materials: 5
+}
+{
+  detail: 'low',
+  variation: 'short-legs-large-paws',
+  meshes: 33,
+  triangles: 1652,
+  materials: 5
+}
+{
+  detail: 'low',
+  variation: 'long-legs-long-tail',
+  meshes: 33,
+  triangles: 1652,
+  materials: 5
+}
+{
+  detail: 'low',
+  variation: 'small-head',
+  meshes: 33,
+  triangles: 1652,
+  materials: 5
+}
+{
+  detail: 'low',
+  variation: 'large-head',
+  meshes: 33,
+  triangles: 1652,
+  materials: 5
+}
+Nine species presets/random recipes, rat validation, mirrored paws, rigid geometry, fixed limb/tail lengths, level feet, ground clearance, forward walking, alternating gallop contacts, all-feet suspension, planted run feet, continuous run cycle, body leap, CORRER+ faster/higher gait and one-shot bite/recovery verified.
+v3-v4 patch applies cleanly and reproduces the three production source files.

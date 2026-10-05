@@ -1,0 +1,14 @@
+import {build} from 'esbuild';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+await mkdir('dist',{recursive:true});
+const result=await build({entryPoints:['src/main.ts'],bundle:true,write:false,format:'iife',target:'es2022',minify:true,legalComments:'inline'});
+const code=result.outputFiles[0].text.replaceAll('</script','<\\/script');
+const css=await readFile('src/style.css','utf8');
+const template=await readFile('index.html','utf8');
+const html=template.replace('<link rel="stylesheet" href="./src/style.css">',()=>`<style>${css}</style>`).replace('<script type="module" src="./src/main.ts"></script>',()=>`<script>${code}</script>`);
+await writeFile('dist/ABRIR_EDITOR.html',html);
+await writeFile('dist/index.html',html);
+await writeFile('ABRIR_EDITOR.html',html);
+await build({entryPoints:['src/api.ts'],outfile:'dist/character.module.js',bundle:true,format:'esm',target:'es2022',external:['three'],sourcemap:true});
+console.log('Editor offline: dist/ABRIR_EDITOR.html');
+console.log('Módulo de integração: dist/character.module.js');

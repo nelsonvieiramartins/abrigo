@@ -1,0 +1,36 @@
+{
+  "applies": true,
+  "source": "canon-table",
+  "styleHeads": 8,
+  "snappedToHeads": 8,
+  "proportions": {
+    "torso": 3.0,
+    "legs": 4.0,
+    "headHeightFraction": 0.125,
+    "shoulderWidth": 0.25,
+    "waistWidth": 0.125,
+    "hipWidth": 0.1875,
+    "hipLineY": 0.5,
+    "kneeLineY": 0.25,
+    "upperArmLength": 0.187,
+    "forearmLength": 0.187,
+    "shinLength": 0.25
+  },
+  "faceLandmarks": {
+    "eyeLine": 0.5,
+    "noseBase": 0.75,
+    "mouthLine": 0.85
+  },
+  "pose": {
+    "name": "bind",
+    "description": "A-pose bind, arms lowered, palms inward"
+  },
+  "unsourced": [
+    "chestWidth",
+    "shoulderLineY",
+    "waistLineY",
+    "handLength",
+    "thighLength",
+    "footLength"
+  ]
+}

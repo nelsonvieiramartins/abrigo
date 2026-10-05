@@ -1,0 +1,35 @@
+{
+  "kind": "creature",
+  "schemaVersion": 1,
+  "species": "skeleton",
+  "name": "Esqueleto da referência",
+  "seed": "abrigo-esqueleto-v1",
+  "body": {
+    "scale": 1,
+    "bulk": 0.5
+  },
+  "appearance": {
+    "primary": "#d5c3a5",
+    "secondary": "#ac967a",
+    "eyes": "#29241d",
+    "markings": 0
+  },
+  "anatomy": {
+    "legs": 1,
+    "tail": 1,
+    "ears": 1,
+    "wingspan": 1,
+    "count": 48,
+    "spread": 1,
+    "length": 1,
+    "thickness": 1
+  },
+  "behavior": {
+    "temperament": "aggressive",
+    "health": 60,
+    "damage": 12,
+    "speed": 2,
+    "detection": 12,
+    "venomous": false
+  }
+}

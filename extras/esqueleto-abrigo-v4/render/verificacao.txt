@@ -1,0 +1,51 @@
+{
+  detail: 'high',
+  proportion: 1,
+  meshes: 21,
+  triangles: 7945,
+  geometries: 21,
+  materials: 3
+}
+{
+  detail: 'high',
+  proportion: 0.85,
+  meshes: 21,
+  triangles: 7945,
+  geometries: 21,
+  materials: 3
+}
+{
+  detail: 'high',
+  proportion: 1.15,
+  meshes: 21,
+  triangles: 7945,
+  geometries: 21,
+  materials: 3
+}
+{
+  detail: 'low',
+  proportion: 1,
+  meshes: 21,
+  triangles: 5549,
+  geometries: 21,
+  materials: 3
+}
+{
+  detail: 'low',
+  proportion: 0.85,
+  meshes: 21,
+  triangles: 5549,
+  geometries: 21,
+  materials: 3
+}
+{
+  detail: 'low',
+  proportion: 1.15,
+  meshes: 21,
+  triangles: 5549,
+  geometries: 21,
+  materials: 3
+}
+Presets, world palm/thumb orientation, forward swing/backward stance, mirrored hands/feet, palmar curl, rig, recessed sockets, lengths, floor, repeated attacks, geometry and budgets verified.
+Factory low statistics, scale, motions and idempotent disposal passed.
+Factory high statistics, scale, motions and idempotent disposal passed.

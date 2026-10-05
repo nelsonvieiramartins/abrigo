@@ -1,0 +1,48 @@
+{
+  "kind": "creature",
+  "schemaVersion": 1,
+  "species": "spider",
+  "name": "Aranha da mata",
+  "seed": "aranha-referencia-01",
+  "body": {
+    "scale": 1,
+    "bulk": 0.5
+  },
+  "appearance": {
+    "primary": "#51483f",
+    "secondary": "#756353",
+    "eyes": "#151412",
+    "markings": 0.55
+  },
+  "anatomy": {
+    "legs": 1,
+    "tail": 1,
+    "ears": 1,
+    "wingspan": 1,
+    "count": 48,
+    "spread": 1,
+    "length": 1,
+    "thickness": 1
+  },
+  "behavior": {
+    "temperament": "territorial",
+    "health": 35,
+    "damage": 9,
+    "speed": 2,
+    "detection": 12,
+    "venomous": true
+  },
+  "spider": {
+    "abdomenWidth": 1,
+    "abdomenHeight": 1,
+    "abdomenLength": 1,
+    "headWidth": 1,
+    "headHeight": 1,
+    "headLength": 1,
+    "bodyHeight": 1,
+    "legLength": 1,
+    "legSpread": 1,
+    "legThickness": 1,
+    "eyeSize": 1
+  }
+}

@@ -1,0 +1,13 @@
+export {createCharacter,EXPRESSIONS} from './character';
+export {DEFAULT,randomCharacter,presetCharacter,validateSpec,characterStats,clone} from './schema';
+export type {CharacterSpec,Motion} from './schema';
+export type {CharacterModel,CharacterOptions,Detail,Expression} from './character';
+export {createCreature} from './creature';
+export type {CreatureModel} from './creature';
+export {CREATURE_SPECIES,presetCreature,randomCreature,validateCreatureSpec} from './creature-schema';
+export type {CreatureSpec,CreatureSpecies,CreatureMotion,CreatureDetail,SpiderShape,ScorpionShape,RatShape} from './creature-schema';
+export {createObject,objectToTypeScript} from './object';
+export type {ObjectModel,ObjectDetail} from './object';
+export {OBJECT_SHAPES,OBJECT_PRESETS,presetObject,validateObjectSpec} from './object-schema';
+export type {ObjectSpec,ObjectPart} from './object-schema';
+export {analyzeImage,blockout,silhouetteIoU} from './object-analysis';

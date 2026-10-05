@@ -1,0 +1,47 @@
+{
+  "kind": "creature",
+  "schemaVersion": 1,
+  "species": "rat",
+  "name": "Rato marrom",
+  "seed": "abrigo-rato-01",
+  "body": {
+    "scale": 1,
+    "bulk": 0.35
+  },
+  "appearance": {
+    "primary": "#756d5e",
+    "secondary": "#b1a690",
+    "eyes": "#171513",
+    "markings": 0.25
+  },
+  "anatomy": {
+    "legs": 1,
+    "tail": 1,
+    "ears": 1,
+    "wingspan": 1,
+    "count": 48,
+    "spread": 1,
+    "length": 1,
+    "thickness": 1
+  },
+  "behavior": {
+    "temperament": "territorial",
+    "health": 18,
+    "damage": 4,
+    "speed": 2.5,
+    "detection": 9,
+    "venomous": false
+  },
+  "rat": {
+    "bodyLength": 1,
+    "bodyWidth": 1,
+    "headSize": 1,
+    "muzzleLength": 1,
+    "earSize": 1,
+    "legLength": 1,
+    "pawSize": 1,
+    "tailLength": 1,
+    "tailThickness": 1,
+    "whiskerLength": 1
+  }
+}

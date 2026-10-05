@@ -1,0 +1,11 @@
+node_modules/
+.test/
+.DS_Store
+dist/
+ABRIR_EDITOR.html
+.env
+.env.*
+!.env.example
+factories/*
+!factories/README.md
+!factories/exemplo-*

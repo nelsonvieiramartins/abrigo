@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/img2threejs/img2threejs",
+  "commit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733",
+  "license": "Apache-2.0",
+  "factorySha256": "ab398f689dae632a1434122f4222682fb01640f19f99a8e6dbc0721465279d35",
+  "reuse": [
+    "buildTaperedSweepGeometry",
+    "derive_anatomy(8)"
+  ],
+  "note": "Runtime extension; not a completed image reconstruction pipeline."
+}

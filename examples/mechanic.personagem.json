@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "seed": "2407",
+  "name": "Dylan Reed",
+  "body": {
+    "height": 1.78,
+    "build": 0.5,
+    "shoulders": 0.55,
+    "hips": 0.45,
+    "head": 1
+  },
+  "appearance": {
+    "skin": "#cd9b78",
+    "hair": "side",
+    "hairColor": "#4b3327",
+    "beard": "full",
+    "eyeColor": "#3e5148",
+    "faceWidth": 1
+  },
+  "outfit": {
+    "top": "tshirt",
+    "topColor": "#4f6581",
+    "pants": "cargo",
+    "pantsColor": "#4a4a3e",
+    "shoes": "boots",
+    "shoeColor": "#302922",
+    "hat": "cap",
+    "backpack": false,
+    "glasses": false
+  },
+  "wear": 0.58,
+  "profession": "mechanic",
+  "traits": [
+    "handy"
+  ]
+}

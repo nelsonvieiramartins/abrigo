@@ -1,0 +1,16 @@
+{
+  "updated": "2026-09-30",
+  "characters": {"configurations": 719, "instances": 1438, "maxTriangles": {"low": 5714, "high": 59734}},
+  "lenhador": {"lowTriangles": 5505, "highTriangles": 9679, "uhdTriangles": 9823, "highMeshes": 182, "checks": ["JSON round trip", "low/high/uhd budgets", "faceted materials", "short jacket without coat tails", "300 seeds exclude new options"]},
+  "creatures": {"configurations": 32, "instances": 64, "maxTriangles": {"low": 9600, "high": 55200}, "refinedHigh": {"wolf": {"triangles": 20540, "meshes": 48}, "bat": {"triangles": 20661, "meshes": 31}, "swarm": {"triangles": 22080, "meshes": 3, "instanced": true}, "snake": {"triangles": 19160, "meshes": 14}}},
+  "checks": [
+    "Characters: deterministic seeds, JSON migration, finite geometry, sockets, animations, grounding, expressions and face features",
+    "Creatures: four species, extreme anatomy, deterministic seeds and JSON validation",
+    "Creatures: finite geometry, animated transforms, floor bounds and unchanged root transforms",
+    "Creatures: same sockets at low/high detail and exact resource disposal",
+    "Wolf HD: continuous torso/neck, toes, claws, detailed ears, eyes, tail and batched meshes",
+    "Bat HD: curved membranes, fingers, veins, claws, ears, eyes, jaw and blinking lids",
+    "Swarm HD: segmented insects, antennas, legs, stinger, two wing pairs and three InstancedMesh buffers",
+    "Snake HD: continuous scaled body, ventral plates, smooth normals, jaw, fangs and forked tongue"
+  ]
+}

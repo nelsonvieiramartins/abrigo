@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "seed": "2407",
+  "name": "Alex Morgan",
+  "body": {
+    "height": 1.78,
+    "build": 0.5,
+    "shoulders": 0.55,
+    "hips": 0.45,
+    "head": 1
+  },
+  "appearance": {
+    "skin": "#cd9b78",
+    "hair": "side",
+    "hairColor": "#4b3327",
+    "beard": "stubble",
+    "eyeColor": "#3e5148",
+    "faceWidth": 1
+  },
+  "outfit": {
+    "top": "jacket",
+    "topColor": "#64715b",
+    "pants": "cargo",
+    "pantsColor": "#4a4a3e",
+    "shoes": "boots",
+    "shoeColor": "#302922",
+    "hat": "none",
+    "backpack": true,
+    "glasses": false
+  },
+  "wear": 0.22,
+  "profession": "ranger",
+  "traits": [
+    "quiet"
+  ]
+}

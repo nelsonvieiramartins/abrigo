@@ -1,0 +1,77 @@
+--- a/rat-detail.ts
++++ b/rat-detail.ts
+@@ -12,6 +12,9 @@
+ export const RAT_RUN_PERIOD=.30;
+ /** Nominal metres/second for legLength=1, scale=1; the host applies translation. */
+ export const RAT_RUN_SPEED=.040/(.28*RAT_RUN_PERIOD);
++/** CORRER+: faster bounding with larger, smooth body and paw arcs. */
++export const RAT_RUN_PLUS_PERIOD=.24;
++export const RAT_RUN_PLUS_SPEED=.048/(.28*RAT_RUN_PLUS_PERIOD);
+ /** Rigid procedural rat. Metres, Y up, +Z forward. World movement belongs to ABRIGO. */
+ export function buildDetailedRat(spec:CreatureSpec,c:RatContext,detail:CreatureDetail='high') {
+  const {body,nodes,sockets,geometries,materials}=c,high=detail==='high',n=high?8:6;
+@@ -167,15 +170,16 @@
+   const prepare=attack?ease(0,.16,elapsed)*(1-ease(.17,.32,elapsed)):0;
+   const bite=attack?ease(.17,.28,elapsed)*(1-ease(.34,.57,elapsed)):0;
+   const open=attack?ease(.02,.16,elapsed)*(1-ease(.23,.35,elapsed)):0;
+-  const moving=motion==='move'||motion==='run',running=motion==='run',frequency=9;
+-  const phase=((time/RAT_RUN_PERIOD)%1+1)%1;
++  const plus=motion==='runPlus',running=motion==='run'||plus,moving=motion==='move'||running,frequency=9;
++  const period=plus?RAT_RUN_PLUS_PERIOD:RAT_RUN_PERIOD;
++  const phase=((time/period)%1+1)%1;
+   // One broad, analytic arc: no short pulses or frame-dependent filtering.
+   // Small body travel keeps the fast gait light and the silhouette steady.
+-  const buoyancy=.003+.006*(.5-.5*Math.cos(2*Math.PI*(phase-.90)));
++  const buoyancy=.003+(plus?.018:.006)*(.5-.5*Math.cos(2*Math.PI*(phase-.90)));
+   body.position.y=running?body.scale.y*shape.legLength*buoyancy:
+    moving?.0015*shape.legLength*Math.pow(Math.sin(time*frequency),2):.0005*Math.sin(time*2.2);
+   body.position.z=bite*.026-prepare*.009;body.rotation.set(0,0,0);
+-  torso.rotation.x=running?.025*Math.sin(2*Math.PI*(phase-.12)):bite*.07-prepare*.035;
++  torso.rotation.x=running?(plus?.040:.025)*Math.sin(2*Math.PI*(phase-.12)):bite*.07-prepare*.035;
+   torso.rotation.z=running?0:moving?Math.sin(time*frequency)*.009:0;
+   head.rotation.x=running?-torso.rotation.x*.65:prepare*-.10+bite*.12;
+   head.rotation.y=running?0:moving?Math.sin(time*frequency*.5)*.012:Math.sin(time*1.5)*.015;
+@@ -188,7 +192,7 @@
+     const y=hipRest[i].y-H,z=hipRest[i].z,c=Math.cos(torso.rotation.x),s=Math.sin(torso.rotation.x);
+     leg.hip.position.y=H+y*c-z*s;leg.hip.position.z=y*s+z*c;
+     const start=(leg.rear?0:.50)+(leg.side>0?.025:0),duty=.28;
+-    const p=((phase-start)%1+1)%1,stride=.020*shape.legLength;
++    const p=((phase-start)%1+1)%1,stride=(plus?.024:.020)*shape.legLength;
+     let dz:number,lift:number;
+     if(p<duty){dz=stride*(1-2*p/duty);lift=0;}
+     else{
+@@ -199,10 +203,10 @@
+      // lift envelope introduced a kink, most visible at higher playback rates.
+      const fold=Math.sin(Math.PI*u)**4;
+      const follow=THREE.MathUtils.smootherstep(u,0,.12)*(1-THREE.MathUtils.smootherstep(u,.88,1));
+-     lift=.027*shape.legLength*fold+(body.position.y/body.scale.y)*follow;
++     lift=(plus?.035:.027)*shape.legLength*fold+(body.position.y/body.scale.y)*follow;
+     }
+     // Compensate shoulder motion: contact feet remain still when the host
+-    // advances at RAT_RUN_SPEED * legLength (and scales metres by body.scale).
++    // advances at the active run speed * legLength (and scales metres by body.scale).
+     legPose(leg,dz+hipRest[i].z-leg.hip.position.z,lift,true);
+    }else{
+     const p=time*frequency+leg.phase;
+--- a/creature-schema.ts
++++ b/creature-schema.ts
+@@ -2,7 +2,7 @@
+ 
+ export const CREATURE_SPECIES = {wolf:'Lobo',werewolf:'Lobisomem',bat:'Morcego',swarm:'Enxame',snake:'Cobra',spider:'Aranha',scorpion:'Escorpião',skeleton:'Esqueleto',rat:'Rato'} as const;
+ export type CreatureSpecies = keyof typeof CREATURE_SPECIES;
+-export type CreatureMotion = 'idle'|'move'|'run'|'attack';
++export type CreatureMotion = 'idle'|'move'|'run'|'runPlus'|'attack';
+ export type CreatureDetail = 'low'|'high';
+ export interface SpiderShape {
+   abdomenWidth:number; abdomenHeight:number; abdomenLength:number;
+--- a/creature.ts
++++ b/creature.ts
+@@ -134,7 +134,7 @@
+     const point=(u:number,t:number,m:CreatureMotion)=>new THREE.Vector3(Math.sin(u*Math.PI*3-t*(m==='move'?4:1)+phase)*.16*Math.sin(u*Math.PI),radius+(m==='attack'?Math.pow(1-u,4)*.32*(.5+.5*Math.sin(t*5)):0),length*(.5-u));
+     animate=(t,m)=>{for(let i=0;i<=rows;i++){const u=i/rows,p=point(u,t,m),r=radius*(1-.96*Math.pow(u,3));for(let j=0;j<=sides;j++){const a=j/sides*Math.PI*2,k=(i*(sides+1)+j)*3;positions[k]=p.x+Math.sin(a)*r;positions[k+1]=p.y+Math.cos(a)*r;positions[k+2]=p.z;}}geo.attributes.position.needsUpdate=true;geo.computeVertexNormals();geo.computeBoundingSphere();head.position.copy(point(0,t,m));const dir=point(0,t,m).sub(point(.02,t,m));head.rotation.y=Math.atan2(dir.x,dir.z);tongue.scale.z=.6+Math.max(0,Math.sin(t*6))*.6;};
+   }
+-  const update=(time:number,motion:CreatureMotion='idle')=>{if(!Number.isFinite(time)||!['idle','move','run','attack'].includes(motion))throw new Error('Tempo ou movimento de criatura inválido.');if(motion==='run'&&!['wolf','werewolf','spider','scorpion','skeleton','rat'].includes(spec.species))throw new Error('Corrida disponível apenas para lobos, lobisomens, aranhas, escorpiões, esqueletos e ratos.');animate(time,motion);};
++  const update=(time:number,motion:CreatureMotion='idle')=>{if(!Number.isFinite(time)||!['idle','move','run','runPlus','attack'].includes(motion))throw new Error('Tempo ou movimento de criatura inválido.');if(motion==='run'&&!['wolf','werewolf','spider','scorpion','skeleton','rat'].includes(spec.species))throw new Error('Corrida disponível apenas para lobos, lobisomens, aranhas, escorpiões, esqueletos e ratos.');if(motion==='runPlus'&&spec.species!=='rat')throw new Error('CORRER+ disponível apenas para ratos.');animate(time,motion);};
+   update(0);let triangles=0,meshes=0;root.traverse((o:any)=>{if(o.isMesh){meshes++;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1);}});
+   let disposed=false;
+   return {root,nodes,sockets,detail,stats:{triangles,meshes},update,dispose(){if(disposed)return;disposed=true;root.traverse(o=>{if(o instanceof THREE.InstancedMesh)o.dispose();});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());root.removeFromParent();}};

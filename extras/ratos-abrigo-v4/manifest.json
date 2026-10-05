@@ -1,0 +1,206 @@
+{
+  "version": "ratos-abrigo-v4",
+  "change": "New rat-only CORRER+ (runPlus): 50% faster advance, 25% quicker cycle and 3x body rise; normal run unchanged.",
+  "files": {
+    "LEIA-ME.md": {
+      "bytes": 14402,
+      "sha256": "f0be62b06956f0d1ae3b8bfe6c8adb910264be33e448f010981c8fe648803e08"
+    },
+    "THREE-LICENSE.txt": {
+      "bytes": 1081,
+      "sha256": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc"
+    },
+    "atualizacao-v3-v4.patch": {
+      "bytes": 6348,
+      "sha256": "a5c8152b7c3f61abe815702a35a16d65c754b2658ac6347f2aa11cdc40b16d9b"
+    },
+    "cabeca.png": {
+      "bytes": 61506,
+      "sha256": "0ab97ecb11e54ab2b5d8e656ac202a3c2f4b30b5e5f6dcf601502a144ed26114"
+    },
+    "cauda.png": {
+      "bytes": 22636,
+      "sha256": "b2b44751b95fe0e335e462c989b228d50016d424ca78e35195978bd9c1907351"
+    },
+    "cinza.png": {
+      "bytes": 50760,
+      "sha256": "68511f5f67a1e7cc6fa5cad795978f64ee26a129774d68042506eaa7280ae02a"
+    },
+    "creature-schema.ts": {
+      "bytes": 12476,
+      "sha256": "9ed9b46d4c113c1731f8631aaa81602ee4cbd996b2c6f343a850ca3d11613e50"
+    },
+    "creature.ts": {
+      "bytes": 14193,
+      "sha256": "e4ac1fe90a4299c237ea3dcc326141f9d260f3eeb680231102009f3866aac0ff"
+    },
+    "frente.png": {
+      "bytes": 71551,
+      "sha256": "0c66022774052e08c31951aac6ac822a349122c1041317759227f0586a79b150"
+    },
+    "gallop-0.png": {
+      "bytes": 38395,
+      "sha256": "0de0073b6308bb6eb27464f29ccf98a00e70af583560a914ab184774cdc0a0cd"
+    },
+    "gallop-1.png": {
+      "bytes": 39301,
+      "sha256": "f9e9baad450dbceca21af83ca58bed91876c0a3c095692ce351a870a9d612bba"
+    },
+    "gallop-2.png": {
+      "bytes": 38217,
+      "sha256": "a01aaa95c8d7c315158f7380a378908b7380ffbf8072e42ca9657d842ae25f12"
+    },
+    "gallop-3.png": {
+      "bytes": 38360,
+      "sha256": "18ebb0a0a9f3739db38d6e3999de277d736582ded0ee954b828d4d9aaccbff8a"
+    },
+    "gallopplus-0.png": {
+      "bytes": 37659,
+      "sha256": "4562adcc458a55cb444025f6bbf11296b4c33ac49cd8f44a7fa3ebccb5c0ca71"
+    },
+    "gallopplus-1.png": {
+      "bytes": 38793,
+      "sha256": "19cee438e39f556c2bfcdf1d672c0c584ae447deaa118dcc762d205d1ad8f83e"
+    },
+    "gallopplus-2.png": {
+      "bytes": 37127,
+      "sha256": "0035237dfbbb4c62c626f5772bcc36bef57134b3f84e88dc171e159c271b568b"
+    },
+    "gallopplus-3.png": {
+      "bytes": 37806,
+      "sha256": "4e24988b1eab83e561e005687771ce9543b98b14afcf69f24f04bf08e3796749"
+    },
+    "integracao.patch": {
+      "bytes": 11203,
+      "sha256": "6ec9c6a69649674e96a920903f36f035d431c4bdc9e76be61341e16ee94b1a40"
+    },
+    "lateral.png": {
+      "bytes": 40617,
+      "sha256": "11a4132dbb34b27a93a4b1119112bcb0a2e7a57a135e24160fda8d590027dd6b"
+    },
+    "pata.png": {
+      "bytes": 32928,
+      "sha256": "180aabc1a16dbb49a55611572986c941cf44c680b00caa6b46efbab13e7d18e7"
+    },
+    "preto.png": {
+      "bytes": 47452,
+      "sha256": "935390f56b264815be6f631661b667beb99972c3d6c8fc9451bfb577e2b77db3"
+    },
+    "rat-detail.ts": {
+      "bytes": 16506,
+      "sha256": "07213bd846348e09325000e4a19741bd4eeae55437ff7333b83efc2b98c9b6ae"
+    },
+    "rato-ataque.gif": {
+      "bytes": 320682,
+      "sha256": "23f13a5ee8d7f804a378740f5b5dab26a9a77cecd2ba77d12b6c5c72879d069c"
+    },
+    "rato-caminhada.gif": {
+      "bytes": 475951,
+      "sha256": "d98ad1a72d3adea2ad9b6badd7c0c5a03f3b71dfacf0b6c4391a9b3eac72eb4f"
+    },
+    "rato-cinza.criatura.json": {
+      "bytes": 817,
+      "sha256": "5199b046544f3b3dd45814dfe2b5b50c1c02a33e2195f88dfd69f4b708f7135f"
+    },
+    "rato-correr-mais-fases.png": {
+      "bytes": 138297,
+      "sha256": "992121d36a883b374e3ed42b4c0eaab1da9c354c759038641094f871c28cde85"
+    },
+    "rato-correr-mais.gif": {
+      "bytes": 1015812,
+      "sha256": "1d85f6b8abdea610dd2470cdee25ea37822b52e912fbfbccaddbba9439007a29"
+    },
+    "rato-corrida-fases.png": {
+      "bytes": 139304,
+      "sha256": "b8882b68eb3893c4635033f58ff18cf2b224bb3250adc2430f2a776e8df8e66a"
+    },
+    "rato-corrida.gif": {
+      "bytes": 734912,
+      "sha256": "af79e1fd7d930168b818af98afe7ea1a35a084c93558bf4f356bfef3ab822250"
+    },
+    "rato-detalhes.png": {
+      "bytes": 199036,
+      "sha256": "ed636ed9047cc40dcd7a2913365db5a0bfab0b1acc0f235b07fc027a49b08a5c"
+    },
+    "rato-marrom.criatura.json": {
+      "bytes": 818,
+      "sha256": "c217d1c5ebd4a36226c8c3cdfe30ee3120e985be963fdd060f32e85d6ed5e796"
+    },
+    "rato-modelo.png": {
+      "bytes": 131999,
+      "sha256": "20a9960ec8c0e7e44b33f5f289cd452fcb25ef9286cffb48d20b75d69925e499"
+    },
+    "rato-preto.criatura.json": {
+      "bytes": 817,
+      "sha256": "78b67c2fc1e3a354d6c800759f67b1445329ab01116e33c554656e256a703a08"
+    },
+    "rato-variantes.png": {
+      "bytes": 67961,
+      "sha256": "6e799c924e033c27ac16eedb79d5e97ef01894b69d7a2929ca75a7537ce2055c"
+    },
+    "rato-vistas.png": {
+      "bytes": 181745,
+      "sha256": "5b2d9ccc2030eabd44d56b558a02b7d7a345476b3d7133bb18f68d71f4199e0a"
+    },
+    "render/creature-schema.ts": {
+      "bytes": 12476,
+      "sha256": "9ed9b46d4c113c1731f8631aaa81602ee4cbd996b2c6f343a850ca3d11613e50"
+    },
+    "render/gerar-correr-mais-gif.py": {
+      "bytes": 789,
+      "sha256": "132ff1d84bf928c5bbe272c56736ff524569bd235b742c253bf0e0852b12fffa"
+    },
+    "render/gerar-corrida-gif.py": {
+      "bytes": 825,
+      "sha256": "669b29b565f35f8880decda2acc031c844763f35cc7ae1f4020cbef458125a67"
+    },
+    "render/package.json": {
+      "bytes": 608,
+      "sha256": "192225b8103092c052106206b8434d4b9bc14d09c5f882bd4ea440f241a1b7f0"
+    },
+    "render/raster_geometry.py": {
+      "bytes": 1231,
+      "sha256": "0b19e964d542da2d9934ec653465d51981f023ac9b191674edd751084ec5cd8a"
+    },
+    "render/rat-detail.ts": {
+      "bytes": 16506,
+      "sha256": "07213bd846348e09325000e4a19741bd4eeae55437ff7333b83efc2b98c9b6ae"
+    },
+    "render/render-views.ts": {
+      "bytes": 5002,
+      "sha256": "9efd9c0c9be25c47c0585ac8c9daea975a66bec2592b38e660b3de5c8e449172"
+    },
+    "render/schema.ts": {
+      "bytes": 324,
+      "sha256": "b312ff3c9e706b6c6f041b98e90c38ce22a23ae517631e19ae39b284e10e9e14"
+    },
+    "render/verificacao-modelo.ts": {
+      "bytes": 9537,
+      "sha256": "2c6023d8d526df64b2c950cdea111836f8eeb605220c6dd04a2d74df9602a046"
+    },
+    "render/verificacao.txt": {
+      "bytes": 1398,
+      "sha256": "e4c03d4c71d49a476b4204773c45f15c7428a28dd7ff19227208d9ba8bb91962"
+    },
+    "render/visualizador.ts": {
+      "bytes": 6764,
+      "sha256": "8233a438b1466efeff8c935c8fecd85dc30ff81ca035ec3145cd4c87d0019d05"
+    },
+    "superior.png": {
+      "bytes": 34844,
+      "sha256": "bfa27b54348748f6399994a66c40084d0836e3c479672402eadb5d60e59bcecd"
+    },
+    "traseira.png": {
+      "bytes": 41053,
+      "sha256": "06f5d07a48fe1447d40f77b532b6cbff8946dc2436aeff1d36450469c968f926"
+    },
+    "tres-quartos.png": {
+      "bytes": 51960,
+      "sha256": "7f72eda17fef9230f171df57e06e52941f9e5464caa3d9e6a381293c103bb0c3"
+    },
+    "visualizador-ratos.html": {
+      "bytes": 596714,
+      "sha256": "f0c995f0eb0000b5afc2241073098040b230e66995e89a0b296eecf23c4dcab0"
+    }
+  }
+}
