@@ -1,0 +1,3 @@
+# Preserve the supplied package byte-for-byte, including line endings.
+extras/ratos-abrigo-v4/** -text
+src/rat-detail.ts -text
