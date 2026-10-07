@@ -5,6 +5,8 @@ import {createCharacter,CharacterModel,Detail,Expression} from './character';
 import {createForestPostFX} from './postfx';
 import {clone,DEFAULT,type CharacterSpec,type Motion} from './schema';
 import {createCreature,type CreatureModel} from './creature';
+import {prepareFauna} from './fauna-prepare';
+import {resizePreviewPlatform} from './preview-platform';
 import type {CreatureSpec,CreatureMotion} from './creature-schema';
 import type {GameFrame} from './game-controls';
 import type {GameObstacle} from './game-collision';
@@ -13,6 +15,9 @@ import {createCourseScene,animationJumpLift} from './game-course-scene';
 import {createWoodTest} from './game-wood';
 import {createCombatScene} from './game-combat-scene';
 import type {CombatConfig} from './game-combat';
+import {createGameMapScene} from './game-map-scene';
+import type {GameMapData} from './game-map-data';
+import {fitGameCameraDepth} from './game-camera';
 
 export function createPreview(host:HTMLElement,onStats:(s:{triangles:number;meshes:number})=>void){
  const scene=new THREE.Scene();
@@ -31,9 +36,10 @@ export function createPreview(host:HTMLElement,onStats:(s:{triangles:number;mesh
  if(compatible){scene.add(new THREE.AmbientLight('#e7e8d7',1.0));key.intensity=1.4;}
  const fill=new THREE.DirectionalLight('#a6c8cc',1.7);if(compatible)fill.intensity=.6;fill.position.set(3,3,-4);scene.add(fill);
  const stage=new THREE.Group();scene.add(stage);
+ const platform=new THREE.Group();stage.add(platform);
  const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.ShadowMaterial({opacity:.22}));floor.rotation.x=-Math.PI/2;floor.position.y=-.061;floor.receiveShadow=true;floor.visible=!compatible;stage.add(floor);
- const plate=new THREE.Mesh(new THREE.CylinderGeometry(.83,.85,.055,64),new THREE.MeshStandardMaterial({color:'#373d37',roughness:1}));plate.position.y=-.028;plate.receiveShadow=true;stage.add(plate);
- const ring=new THREE.Mesh(new THREE.TorusGeometry(.79,.003,4,100),new THREE.MeshBasicMaterial({color:'#7c8870'}));ring.rotation.x=Math.PI/2;ring.position.y=.002;stage.add(ring);
+ const plate=new THREE.Mesh(new THREE.CylinderGeometry(.83,.85,.055,64),new THREE.MeshStandardMaterial({color:'#373d37',roughness:1}));plate.position.y=-.0275;plate.receiveShadow=true;platform.add(plate);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.79,.003,4,100),new THREE.MeshBasicMaterial({color:'#7c8870'}));ring.rotation.x=Math.PI/2;ring.position.y=.002;platform.add(ring);
  const grid=new THREE.GridHelper(6,24,'#424d48','#303a37');grid.position.y=-.055;if(compatible)(grid.material as THREE.LineBasicMaterial).color.set('#354238');(grid.material as THREE.Material).transparent=true;(grid.material as THREE.Material).opacity=.44;stage.add(grid);
  const gameStage=new THREE.Group();gameStage.visible=false;scene.add(gameStage);
  const gameFloor=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshStandardMaterial({color:'#303c34',roughness:1}));gameFloor.rotation.x=-Math.PI/2;gameFloor.position.y=-.06;gameFloor.receiveShadow=true;gameStage.add(gameFloor);
@@ -45,10 +51,12 @@ export function createPreview(host:HTMLElement,onStats:(s:{triangles:number;mesh
  let courseScene:ReturnType<typeof createCourseScene>|null=null;
  let woodTest:ReturnType<typeof createWoodTest>|null=null;
  let combatTest:ReturnType<typeof createCombatScene>|null=null;
+ let gameMap:ReturnType<typeof createGameMapScene>|null=null;
+ let mapEditing=false,mapWorkspace=false,gameAreaSize=100;
  const clearGameObstacles=()=>{gameObstacles.forEach(m=>m.dispose());gameObstacles=[];collisionAreas.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});collisionAreas.clear();playerCollider=null;};
  for(let i=0;i<32;i++){
    const a=i*Math.PI/16,geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(Math.sin(a)*.81,.004,Math.cos(a)*.81),new THREE.Vector3(Math.sin(a)*(i%4===0?.74:.78),.004,Math.cos(a)*(i%4===0?.74:.78))]);
-   stage.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:i%4===0?'#b2b99a':'#737d69'})));
+   platform.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:i%4===0?'#b2b99a':'#737d69'})));
  }
  let capturing=false;
  let expression:Expression='neutral',intensity=1,model:CharacterModel|CreatureModel|null=null,current:CharacterSpec|null=null,detail:Detail='high',motion:Motion|CreatureMotion='idle',time=0,paused=false,autoRotate=false,pixel=false,showGrid=true;
@@ -59,7 +67,7 @@ export function createPreview(host:HTMLElement,onStats:(s:{triangles:number;mesh
  const resize=()=>{
    const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;
    renderer.setPixelRatio(pixel?Math.min(1,240/h):Math.min(window.devicePixelRatio,2));renderer.setSize(w,h);post?.setSize(w,h);
-   const span=currentCreature?creatureSpan*Math.max(1,h/w):1.38;camera.left=-span*w/h;camera.right=span*w/h;camera.top=span;camera.bottom=-span;camera.updateProjectionMatrix();
+   const span=mapWorkspace?35:currentCreature?creatureSpan*Math.max(1,h/w):1.38;camera.left=-span*w/h;camera.right=span*w/h;camera.top=span;camera.bottom=-span;camera.updateProjectionMatrix();
  };
  new ResizeObserver(resize).observe(host);resize();
  // UHD renders through the forest post-processing chain; tone mapping then happens at the end of it.
@@ -75,10 +83,11 @@ export function createPreview(host:HTMLElement,onStats:(s:{triangles:number;mesh
   if(gameDriver&&model){const state=gameDriver(dt);time=state.time;motion=state.motion;animateModel(time,motion);const y=state.y??0;model.root.position.set(state.x,y-(state.y===undefined?0:animationJumpLift(motion,time)*model.root.scale.y),state.z);model.root.rotation.y=state.yaw;
    woodTest?.update(dt,model.root,state.motion,state.time,state.playing??true);
    combatTest?.update(dt,state,current?.items.object!=='none'&&current?.items.placement!=='none'?1.6:.9,camera);
-   if(playerCollider){playerCollider.position.set(state.x,y-.052,state.z);colliderMaterial.color.set(state.contacts?.length?'#e6a365':'#aac07b');}
+   if(playerCollider){playerCollider.position.set(state.x,y+(gameMap?.015:-.052),state.z);colliderMaterial.color.set(state.contacts?.length?'#e6a365':'#aac07b');}
    const dx=state.x-gameX,dz=state.z-gameZ;camera.position.x+=dx;camera.position.z+=dz;controls.target.x+=dx;controls.target.z+=dz;key.position.x+=dx;key.position.z+=dz;key.target.position.set(state.x,0,state.z);if(!key.target.parent)scene.add(key.target);gameX=state.x;gameZ=state.z;
    const dy=y-gameY;camera.position.y+=dy;controls.target.y+=dy;gameY=y;
   }else{if(!paused)time+=dt;animateModel(time,motion);}
+  gameMap?.update(now);
   controls.autoRotate=gameDriver?false:autoRotate;controls.autoRotateSpeed=1.4;controls.update();render(dt);
  }
  requestAnimationFrame(frame);
@@ -94,21 +103,22 @@ export function createPreview(host:HTMLElement,onStats:(s:{triangles:number;mesh
    const pos:Record<string,number[]>={iso:[4,3.3,5],front:[0,1.02,6],side:[6,1.02,0],back:[0,1.02,-6],portrait:[1,1.7,6]};
    camera.position.set(...(pos[name]||pos.iso) as [number,number,number]);camera.updateProjectionMatrix();controls.update();
    if(currentCreature){camera.zoom=name==='portrait'?1.3:1;controls.target.set(0,creatureCenter,0);camera.lookAt(controls.target);camera.updateProjectionMatrix();controls.update();}
+   if(gameDriver)fitGameCameraDepth(camera,controls.target,gameAreaSize);
  };
  return {
-   setCharacter(spec:CharacterSpec){current=spec;currentCreature=null;const next=createCharacter(spec,{detail});next.setExpression(expression,intensity,true);model?.dispose();model=next;scene.add(model.root);animateModel(time,motion);onStats(model.stats);},
+   setCharacter(spec:CharacterSpec){current=spec;currentCreature=null;resizePreviewPlatform(platform,1);key.shadow.normalBias=.025;const next=createCharacter(spec,{detail});next.setExpression(expression,intensity,true);model?.dispose();model=next;scene.add(model.root);animateModel(time,motion);onStats(model.stats);},
    setCreature(spec:CreatureSpec){
      const next=createCreature(spec,{detail:detail==='low'?'low':'high',instancing:!compatible});currentCreature=spec;current=null;model?.dispose();model=next;scene.add(next.root);
-     if(motion==='run'&&!['wolf','werewolf','spider','scorpion','skeleton','rat'].includes(spec.species))motion='idle';
+     if(motion==='run'&&!['werewolfSdf','wolfLowpolySdf','wolfSdf','boar','wolf','werewolf','spider','tarantulaSdf','scorpion','skeleton','rat','ratSdf'].includes(spec.species))motion='idle';
      if(motion==='sprint'&&spec.species!=='skeleton')motion='idle';
-     if(motion==='runPlus'&&spec.species!=='rat')motion='idle';
+     if(motion==='runPlus'&&!['rat','ratSdf'].includes(spec.species))motion='idle';
      // Frame the motion envelope so folded wings or a compressed swarm never crop later.
-     const envelopeMotions:CreatureMotion[]=['idle','move','attack'];if(['wolf','werewolf','spider','scorpion','skeleton','rat'].includes(spec.species))envelopeMotions.push('run');
+     const envelopeMotions:CreatureMotion[]=['idle','move','attack'];if(['werewolfSdf','wolfLowpolySdf','wolfSdf','boar','wolf','werewolf','spider','tarantulaSdf','scorpion','skeleton','rat','ratSdf'].includes(spec.species))envelopeMotions.push('run');
      if(spec.species==='skeleton')envelopeMotions.push('sprint');
-     if(spec.species==='rat')envelopeMotions.push('runPlus');
+     if(['rat','ratSdf'].includes(spec.species))envelopeMotions.push('runPlus');
      const samples=envelopeMotions.includes('run')?Array.from({length:24},(_,i)=>i/24):[0,.2,.5,1];
      const box=new THREE.Box3();for(const m of envelopeMotions)for(const t of samples){next.update(t,m);box.union(new THREE.Box3().setFromObject(next.root));}
-     next.update(0,'idle');animateModel(time,motion);const size=box.getSize(new THREE.Vector3());creatureCenter=box.getCenter(new THREE.Vector3()).y;creatureSpan=Math.max(size.length()*.6,.65);controls.target.set(0,creatureCenter,0);plate.scale.setScalar(Math.max(1,Math.max(size.x,size.z)*.65));resize();controls.update();onStats(model.stats);
+next.update(0,'idle');animateModel(time,motion);const size=box.getSize(new THREE.Vector3());creatureCenter=box.getCenter(new THREE.Vector3()).y;creatureSpan=Math.max(size.length()*.6,['ratSdf','tarantulaSdf'].includes(spec.species)?.16:.65);controls.target.set(0,creatureCenter,0);resizePreviewPlatform(platform,Math.max(['ratSdf','tarantulaSdf'].includes(spec.species)?.3:1,Math.max(size.x,size.z)*.65));key.shadow.normalBias=['ratSdf','tarantulaSdf'].includes(spec.species)?.001:.025;resize();controls.update();onStats(model.stats);
    },
    setActive(value:boolean){active=value;if(value)resize();},
    setGameObstacles(spec:CharacterSpec,list:readonly GameObstacle[],radius:number){
@@ -117,7 +127,17 @@ export function createPreview(host:HTMLElement,onStats:(s:{triangles:number;mesh
     for(const o of list){const npc=createCharacter(o.spec??base,{detail:'high'});npc.update(0,'idle');npc.root.position.set(o.x,0,o.z);npc.root.rotation.y=o.yaw;gameStage.add(npc.root);gameObstacles.push(npc);ring(o.radius,o.x,o.z);}
     playerCollider=ring(radius,0,0);camera.zoom=.40;camera.updateProjectionMatrix();controls.minZoom=.18;
    },
-   setGameCourse(course:GameCourse){courseScene?.dispose();woodTest?.dispose();courseScene=createCourseScene(course);gameStage.add(courseScene.root);const wood=course.boxes.find(b=>b.id==='Tronco de madeira');woodTest=wood?createWoodTest(wood):null;if(woodTest)gameStage.add(woodTest.root);gameFloor.visible=false;gameGrid.visible=false;},
+   setGameCourse(course:GameCourse){gameAreaSize=course.size;if(gameDriver)fitGameCameraDepth(camera,controls.target,gameAreaSize);courseScene?.dispose();woodTest?.dispose();courseScene=createCourseScene(course);gameStage.add(courseScene.root);const wood=course.boxes.find(b=>b.id==='Tronco de madeira');woodTest=wood?createWoodTest(wood):null;if(woodTest)gameStage.add(woodTest.root);gameFloor.visible=false;gameGrid.visible=false;},
+   setGameMap(data:GameMapData){gameAreaSize=100;if(gameDriver)fitGameCameraDepth(camera,controls.target,gameAreaSize);gameMap?.dispose();gameMap=createGameMapScene(data);gameStage.add(gameMap.root);gameFloor.visible=false;gameGrid.visible=false;},
+   setMapWorkspace(on:boolean){mapWorkspace=on;stage.visible=!on;gameStage.visible=on||!!gameDriver;controls.minZoom=on?.35:.65;controls.maxZoom=on?35:4.5;camera.far=on?500:100;resize();},
+   mapView(name:string){controls.target.set(0,0,0);camera.zoom=name==='top'?.65:.75;camera.position.set(...(name==='top'?[0,120,.01]:name==='front'?[0,60,120]:[90,90,90]) as [number,number,number]);camera.updateProjectionMatrix();controls.update();},
+   mapGrid(on:boolean){if(gameMap)gameMap.terrain.grid.visible=on;},
+   get gameMap(){return gameMap;},
+   gameMapHit(event:PointerEvent){if(!gameMap)return null;const rect=renderer.domElement.getBoundingClientRect(),ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2),camera);return ray.intersectObject(gameMap.terrain.mesh)[0]?.point??null;},
+   gameEffectHit(event:PointerEvent){if(!gameMap)return null;const rect=renderer.domElement.getBoundingClientRect(),ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2),camera);return ray.intersectObjects(gameMap.effects.items(),true).find(h=>h.object.userData.effectRoot)?.object.userData.effectRoot as THREE.Group|undefined;},
+   setMapEditing(on:boolean){mapEditing=on;controls.enableRotate=on;controls.enablePan=on;controls.mouseButtons.LEFT=THREE.MOUSE.ROTATE;},
+   clearGameMap(){gameMap?.dispose();gameMap=null;mapEditing=false;controls.enablePan=false;controls.enableRotate=!gameDriver;},
+   settleGameMap(){gameMap?.settleEffects();for(const npc of gameObstacles)npc.root.position.y=gameMap?.terrain.heightAt(npc.root.position.x,npc.root.position.z)??0;for(const ring of collisionAreas.children)ring.position.y=gameMap?gameMap.terrain.heightAt(ring.position.x,ring.position.z)+.015:-.052;},
    resetGameWood(){woodTest?.reset();},
    startGameCombat(config:CombatConfig,course:GameCourse,obstacles:readonly GameObstacle[],radius:number){combatTest?.dispose();combatTest=createCombatScene(config,course,obstacles,radius,compatible);gameStage.add(combatTest.root);},
    clearGameCombat(){combatTest?.dispose();combatTest=null;},
@@ -126,15 +146,15 @@ export function createPreview(host:HTMLElement,onStats:(s:{triangles:number;mesh
    get gameCombatColliders(){return combatTest?.runtime.colliders()??[];},
    get gameWoodStatus(){return woodTest?.status??'';},
    setGameSector(id:string){courseScene?.setSector(id);},
-   clearGameCourse(){courseScene?.dispose();courseScene=null;woodTest?.dispose();woodTest=null;gameFloor.visible=true;gameGrid.visible=true;},
+   clearGameCourse(){courseScene?.dispose();courseScene=null;woodTest?.dispose();woodTest=null;gameFloor.visible=!gameMap;gameGrid.visible=!gameMap;},
    showGameCollisionAreas(show:boolean){collisionAreas.visible=show;},
    clearGameObstacles,
-   setGameDriver(driver:((dt:number)=>GameFrame)|null){gameDriver=driver;stage.visible=!driver;gameStage.visible=!!driver;controls.enableRotate=!driver;gameX=gameZ=gameY=0;key.position.set(-3,5,4);key.target.position.set(0,0,0);},
-   setMotion(m:Motion|CreatureMotion){if(currentCreature&&m==='runPlus'&&currentCreature.species!=='rat')return;if(currentCreature&&m==='sprint'&&currentCreature.species!=='skeleton')return;if(currentCreature&&m==='run'&&!['wolf','werewolf','spider','scorpion','skeleton','rat'].includes(currentCreature.species))return;if(currentCreature&&['snake','bat','wolf','werewolf','scorpion','spider','skeleton','rat'].includes(currentCreature.species)&&m==='attack'){animateModel(time,'idle');animateModel(time,'attack');}motion=m;},view,
+   setGameDriver(driver:((dt:number)=>GameFrame)|null){gameDriver=driver;if(driver)fitGameCameraDepth(camera,controls.target,gameAreaSize);stage.visible=!driver;gameStage.visible=!!driver;controls.enableRotate=mapEditing||!driver;gameX=gameZ=gameY=0;key.position.set(-3,5,4);key.target.position.set(0,0,0);},
+   setMotion(m:Motion|CreatureMotion){if(currentCreature&&m==='runPlus'&&!['rat','ratSdf'].includes(currentCreature.species))return;if(currentCreature&&m==='sprint'&&currentCreature.species!=='skeleton')return;if(currentCreature&&m==='run'&&!['werewolfSdf','wolfLowpolySdf','wolfSdf','boar','wolf','werewolf','spider','tarantulaSdf','scorpion','skeleton','rat','ratSdf'].includes(currentCreature.species))return;if(currentCreature&&['werewolfSdf','wolfLowpolySdf','wolfSdf','boar','snake','bat','wolf','werewolf','scorpion','spider','tarantulaSdf','skeleton','rat','ratSdf'].includes(currentCreature.species)&&m==='attack'){animateModel(time,'idle');animateModel(time,'attack');}motion=m;},view,
    setExpression(name:Expression,k=intensity){expression=name;intensity=k;if(model&&'setExpression' in model)model.setExpression(name,k);},
    pause(){paused=!paused;return paused;},rotate(){autoRotate=!autoRotate;return autoRotate;},
    pixelate(){if(compatible)throw new Error('A prévia em baixa resolução requer WebGL. Os demais controles continuam disponíveis.');pixel=!pixel;host.classList.toggle('pixelated',pixel);resize();return pixel;},
-   detail(){detail=detail==='low'?'high':'low';setUHD(false);if(current)this.setCharacter(current);if(currentCreature)this.setCreature(currentCreature);return detail!=='low';},
+   detail(){detail=detail==='low'?'high':'low';setUHD(false);if(current)this.setCharacter(current);if(currentCreature){if(['boar','wolfLowpolySdf','wolfSdf','ratSdf','tarantulaSdf','werewolfSdf'].includes(currentCreature.species)){const spec=currentCreature,level=detail;void prepareFauna(spec,level==='low'?'low':'high').then(()=>{if(currentCreature===spec&&detail===level)this.setCreature(spec);}).catch(()=>{if(currentCreature===spec&&detail===level)host.dispatchEvent(new CustomEvent('creature-generation-error',{detail:'Não foi possível gerar o detalhe da criatura SDF. Tente novamente.'}));});}else this.setCreature(currentCreature);}return detail!=='low';},
    uhd(){detail=detail==='uhd'?'high':'uhd';setUHD(detail==='uhd');if(current)this.setCharacter(current);return detail==='uhd';},
    get detailLevel(){return detail;},
    grid(){showGrid=!showGrid;grid.visible=showGrid;return showGrid;},

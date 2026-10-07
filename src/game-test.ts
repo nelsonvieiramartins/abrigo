@@ -4,7 +4,10 @@ import {GAME_COMMANDS,GAME_CONTROL_STORE,createGameController,defaultGameControl
 import {characterCollisionRadius,proceduralTestCharacters,type GameObstacle} from './game-collision';
 import {createGameCourse} from './game-course';
 import {CREATURE_SPECIES,type CreatureSpecies} from './creature-schema';
+import {prepareFauna} from './fauna-prepare';
+import {presetCreature} from './creature-schema';
 import {COMBAT_STORE,loadCombatConfig,validateCombatConfig,type CombatConfig} from './game-combat';
+import {mountGameMapPicker} from './game-map-picker';
 
 const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const keyName=(key:string)=>key?({Space:'Espaço',ShiftLeft:'Shift esquerdo',ControlLeft:'Ctrl esquerdo',ArrowUp:'↑',ArrowDown:'↓',ArrowLeft:'←',ArrowRight:'→'}[key]??key.replace(/^Key|^Digit/,'')):'Sem vínculo';
@@ -15,7 +18,7 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
  <div class="game-test-layout"><section class="game-arena-column"><div id="game-arena" tabindex="0" aria-label="Arena de teste. Clique em Jogar para usar teclado ou joystick."></div><div class="game-live"><strong id="game-motion">Parado</strong><span id="game-position">X 0,00 · Z 0,00</span></div><div class="game-test-actions"><button class="button primary" id="game-play">Jogar</button><button class="button" id="game-center">Reiniciar posição</button></div><p class="game-help">WASD para andar · Shift para correr · Ctrl para correr+ · Espaço para pular · C para agachar · F para ataque lateral. Solte e pressione novamente para repetir uma ação. Esc pausa os controles.</p><p class="game-help">Caminhar/correr + salto ou ataque lateral combinam automaticamente. O item segue os ajustes e o ON/OFF de cada movimento. Área livre de teste: sem colisões ou inimigos.</p><p id="game-pad-status" role="status"></p></section>
  <section class="game-bindings"><h3>Controles de movimento</h3><p>Altere a tecla ou escolha o número do botão. Também pode capturar o próximo botão do joystick. Shift/Ctrl são modificadores de velocidade; use junto com uma direção.</p><div class="game-device-settings" id="game-device-settings"></div><div class="game-binding-table" id="game-binding-table"></div><div class="game-test-actions"><button class="button save-button" id="game-save">Salvar controles em definitivo</button><button class="button quiet" id="game-default">Padrão</button></div><p id="game-control-message" role="status">Vínculos salvos neste navegador, separados do personagem.</p></section></div>`;
  document.body.append(dialog);
- dialog.querySelectorAll('.game-help')[1].textContent='Circuito 48 × 48 m: rampas, vão, caixas, passagem baixa (C), corte de madeira e combate por ondas. Configure e inicie o combate no painel. Fora do combate, não há dano aos personagens.';
+ const courseHelp=dialog.querySelectorAll('.game-help')[1];courseHelp.textContent='Circuito 48 × 48 m: rampas, vão, caixas, passagem baixa (C), corte de madeira e combate por ondas. Configure e inicie o combate no painel. Fora do combate, não há dano aos personagens.';
  const collisionPanel=document.createElement('div');collisionPanel.className='game-device-settings';collisionPanel.innerHTML='<label><input id="game-collision-enabled" type="checkbox" checked> Colisão ON/OFF</label><label><input id="game-collision-areas" type="checkbox" checked> Mostrar áreas de colisão</label>';
  dialog.querySelector('.game-bindings')!.insertBefore(collisionPanel,dialog.querySelector('#game-device-settings'));
  const collisionStatus=document.createElement('p');collisionStatus.id='game-collision-status';collisionStatus.className='game-help';collisionStatus.setAttribute('role','status');dialog.querySelector('.game-live')!.after(collisionStatus);
@@ -40,6 +43,7 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
  const renderSectors=()=>{const html=course.points.map(p=>`<option value="${p.id}" ${currentSector===p.id?'selected':''}>${p.label}</option>`).join('');$('game-sector').innerHTML=html;$('game-quick-sector').innerHTML=html;};renderSectors();
  let config;try{config=loadGameControls(localStorage);}catch{config=defaultGameControls();}
  let controller=createGameController(config),preview:ReturnType<typeof createPreview>|null=null,running=false,capture:{command:GameCommand;kind:'key'|'pad'}|null=null;
+ let mapEditor:ReturnType<typeof mountGameMapPicker>;
  const keys=new Set<string>(),pendingKeys=new Set<string>();let priorPad:boolean[]=[],state:GameFrame={motion:'idle',time:0,x:0,z:0,yaw:0},padText='';
  let obstacles:GameObstacle[]=[],bodyRadius=.4;
  const setupCollisions=()=>{controller.setCollisions(obstacles,bodyRadius,$<HTMLInputElement>('game-collision-enabled').checked);controller.setCourse(course,bodyHeight);};
@@ -95,19 +99,19 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
  button.addEventListener('click',()=>{
   stop();preview?.clearGameCombat();rebuild();renderSettings();const spec=clone(getCharacter());$('game-character').textContent=spec.name+' · personagem atual e configurações de itens';
   bodyRadius=characterCollisionRadius(spec);bodyHeight=spec.body.height;course=createGameCourse(bodyHeight);currentSector='start';renderSectors();obstacles=proceduralTestCharacters(`${Date.now()}:${Math.random()}`);setupCollisions();
-  dialog.showModal();editorPreview?.setActive(false);
-  try{if(!preview)preview=createPreview($('game-arena'),()=>{});preview.setActive(true);preview.setCharacter(spec);preview.view('iso');preview.setGameDriver(driver);preview.setGameObstacles(spec,obstacles,bodyRadius);preview.setGameCourse(course);preview.showGameCollisionAreas($<HTMLInputElement>('game-collision-areas').checked);}catch(e){message('Não foi possível abrir a prévia: '+(e as Error).message);}
+  dialog.showModal();editorPreview?.setActive(false);(window as any).__ABRIGO_MAPS__?.pauseRendering(true);
+  try{if(!preview)preview=createPreview($('game-arena'),()=>{});preview.setActive(true);preview.setCharacter(spec);preview.view('iso');preview.setGameDriver(driver);preview.setGameObstacles(spec,obstacles,bodyRadius);preview.setGameCourse(course);mapEditor.open();applyMapCourse();preview.showGameCollisionAreas($<HTMLInputElement>('game-collision-areas').checked);}catch(e){message('Não foi possível abrir a prévia: '+(e as Error).message);}
  });
  $('game-close').onclick=()=>dialog.close();
- dialog.addEventListener('close',()=>{stop();preview?.clearGameCombat();preview?.setActive(false);preview?.clearGameObstacles();preview?.clearGameCourse();const normal=document.querySelector<HTMLElement>('.workspace:not(.creature-workspace):not(.object-workspace)');editorPreview?.setActive(!!normal&&!normal.hidden);button.focus();});
+ dialog.addEventListener('close',()=>{combatPreparation++;stop();mapEditor.close();preview?.clearGameCombat();preview?.setActive(false);preview?.clearGameObstacles();preview?.clearGameCourse();const normal=document.querySelector<HTMLElement>('.workspace:not(.creature-workspace):not(.object-workspace):not(.map-workspace)');editorPreview?.setActive(!!normal&&!normal.hidden);(window as any).__ABRIGO_MAPS__?.pauseRendering(false);button.focus();});
  $('game-collision-enabled').onchange=()=>{stop();setupCollisions();goToSector(currentSector);};
  $('game-collision-areas').onchange=()=>preview?.showGameCollisionAreas($<HTMLInputElement>('game-collision-areas').checked);
- $('game-play').onclick=()=>{if(running){stop();return;}if(!preview)return;capture=null;keys.clear();running=true;$('game-play').textContent=$('game-quick-play').textContent='Pausar controles';$('game-play').setAttribute('aria-pressed','true');$('game-arena').focus();};
+ $('game-play').onclick=()=>{if(running){stop();return;}if(!preview)return;mapEditor.setEditing(false);capture=null;keys.clear();running=true;$('game-play').textContent=$('game-quick-play').textContent='Pausar controles';$('game-play').setAttribute('aria-pressed','true');$('game-arena').focus();};
  $('game-quick-play').onclick=()=>$('game-play').click();
  $('game-arena').addEventListener('pointerdown',event=>{if(running&&!(event.target as HTMLElement).closest('button,select,input'))$('game-arena').focus();});
  const goToSector=(id:string)=>{const point=course.points.find(p=>p.id===id);if(!point)return;keys.clear();pendingKeys.clear();controller.teleport(point.x,point.z,point.yaw);state=controller.update(0,new Set());currentSector=id;renderSectors();preview?.setGameSector(id);if(running)$('game-arena').focus();};
  $('game-sector').onchange=event=>goToSector((event.target as HTMLSelectElement).value);$('game-quick-sector').onchange=event=>goToSector((event.target as HTMLSelectElement).value);
- $('game-random-npcs').onclick=()=>{stop();obstacles=proceduralTestCharacters(`${Date.now()}:${Math.random()}`);controller.setCollisions(obstacles,bodyRadius,$<HTMLInputElement>('game-collision-enabled').checked);preview?.setGameObstacles(getCharacter(),obstacles,bodyRadius);goToSector('start');};
+ $('game-random-npcs').onclick=()=>{stop();obstacles=proceduralTestCharacters(`${Date.now()}:${Math.random()}`);controller.setCollisions(obstacles,bodyRadius,$<HTMLInputElement>('game-collision-enabled').checked);preview?.setGameObstacles(getCharacter(),obstacles,bodyRadius);preview?.settleGameMap();goToSector('start');};
  $('game-center').onclick=()=>goToSector(currentSector);
  $('game-wood-reset').onclick=()=>{stop();preview?.resetGameWood();goToSector('wood');};
  $('game-quick-wood-reset').onclick=()=>$('game-wood-reset').click();
@@ -123,8 +127,9 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
  combatPanel.addEventListener('click',event=>{const el=(event.target as HTMLElement).closest<HTMLElement>('[data-wave-remove]');if(el&&combatConfig.waves.length>1){readCombatFields();combatConfig.waves.splice(Number(el.dataset.waveRemove),1);renderCombat();}});
  combatPanel.addEventListener('change',event=>{const el=event.target as HTMLInputElement;if(el.dataset.enemy){combatConfig.waves[Number(el.dataset.wave)]!.enemies[el.dataset.enemy as CreatureSpecies]=Number(el.value);}else if(el.dataset.combatSetting){(combatConfig as any)[el.dataset.combatSetting]=Number(el.value);}else return;$('game-combat-message').textContent='Alterações aplicadas no próximo reinício. Salve para manter após recarregar.';});
  $('game-wave-save').onclick=()=>{try{combatConfig=validateCombatConfig(readCombatFields());localStorage.setItem(COMBAT_STORE,JSON.stringify(combatConfig));$('game-combat-message').textContent='Ondas salvas neste navegador.';}catch(e){$('game-combat-message').textContent=(e as Error).message;}};
- $('game-combat-start').onclick=()=>{try{const valid=validateCombatConfig(readCombatFields());if(!preview)throw Error('Abra a prévia primeiro.');stop();preview.clearGameCombat();goToSector('combat');preview.startGameCombat(valid,course,obstacles,bodyRadius);$('game-combat-message').textContent='Combate iniciado. Ondas avançam após derrotar todas as criaturas. Jogar/Pausar também pausa os inimigos.';$('game-play').click();}catch(e){$('game-combat-message').textContent=(e as Error).message;}};
- $('game-combat-stop').onclick=()=>{stop();preview?.clearGameCombat();setupCollisions();$('game-combat-message').textContent='Combate encerrado. O circuito continua disponível.';};
+ let combatPreparation=0;
+ $('game-combat-start').onclick=async()=>{const id=++combatPreparation;try{const valid=validateCombatConfig(readCombatFields());if(!preview)throw Error('Abra a prévia primeiro.');stop();preview.clearGameCombat();for(const species of ['boar','wolfLowpolySdf','wolfSdf','ratSdf','tarantulaSdf','werewolfSdf'] as const)if(valid.waves.some(w=>w.enemies[species])){$('game-combat-message').textContent='Preparando criaturas SDF em segundo plano…';await prepareFauna(presetCreature(species));}if(id!==combatPreparation)return;goToSector('combat');preview.startGameCombat(valid,course,obstacles,bodyRadius);$('game-combat-message').textContent='Combate iniciado. Ondas avançam após derrotar todas as criaturas. Jogar/Pausar também pausa os inimigos.';$('game-play').click();}catch(e){if(id===combatPreparation)$('game-combat-message').textContent=(e as Error).message;}};
+ $('game-combat-stop').onclick=()=>{combatPreparation++;stop();preview?.clearGameCombat();setupCollisions();$('game-combat-message').textContent='Combate encerrado. O circuito continua disponível.';};
  $('game-quick-combat-start').onclick=()=>$('game-combat-start').click();$('game-quick-combat-stop').onclick=()=>$('game-combat-stop').click();
  $('game-save').onclick=()=>{try{localStorage.setItem(GAME_CONTROL_STORE,JSON.stringify(validateGameControls(config)));message('Controles salvos em definitivo neste navegador.');}catch{message('Não foi possível salvar os controles neste navegador.');}};
  $('game-default').onclick=()=>{stop();config=defaultGameControls();rebuild();renderSettings();message('Controles padrão restaurados. Clique em Salvar para manter.');};
@@ -149,4 +154,13 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
  });
  dialog.addEventListener('keyup',event=>{keys.delete(event.code);});
  window.addEventListener('blur',()=>{if(dialog.open)stop();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&dialog.open)stop();});
+ const applyMapCourse=()=>{
+  stop();combatPreparation++;preview?.clearGameCombat();
+  courseHelp.textContent=mapEditor.enabled?'Mapa editável 100 × 100 m: personagens e criaturas acompanham o relevo. Edite Terreno e Efeitos, salve e clique em Jogar. Água é visual; não há natação. O combate por ondas também funciona neste mapa.':'Circuito 48 × 48 m: rampas, vão, caixas, passagem baixa (C), corte de madeira e combate por ondas. Configure e inicie o combate no painel. Fora do combate, não há dano aos personagens.';
+  woodControls.hidden=mapEditor.enabled;woodQuick.hidden=mapEditor.enabled;
+  if(mapEditor.enabled&&preview?.gameMap){preview.clearGameCourse();course={size:100,boxes:[],ramps:[],pits:[],points:[{id:'start',label:'Mapa editável / início',x:0,z:0},{id:'combat',label:'Combate no mapa editável',x:0,z:16,yaw:Math.PI}],terrainHeight:(x,z)=>preview?.gameMap?.terrain.heightAt(x,z)??0};preview.settleGameMap();}
+  else{course=createGameCourse(bodyHeight);preview?.setGameCourse(course);preview?.settleGameMap();}
+  const x=state.x,z=state.z,yaw=state.yaw;setupCollisions();controller.teleport(x,z,yaw);state=controller.update(0,new Set());if(!course.points.some(p=>p.id===currentSector))currentSector='start';renderSectors();
+ };
+ mapEditor=mountGameMapPicker(dialog,{preview:()=>preview,stop,changed:applyMapCourse});
 }

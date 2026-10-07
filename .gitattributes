@@ -1,3 +1,5 @@
-# Preserve the supplied package byte-for-byte, including line endings.
+# Preserve third-party source bytes and its SHA-256 roster on every platform.
+vendor/threejs-procedural-animals/** -text
+# Keep the original Rat v4 package hashes stable as well.
 extras/ratos-abrigo-v4/** -text
 src/rat-detail.ts -text

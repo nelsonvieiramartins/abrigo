@@ -1,8 +1,20 @@
 # ABRIGO — Criador de personagens: estado atual e próximos passos
 
+**Lobo — Fauna SDF Low Poly (06/10/2026):** `wolfLowpolySdf` separado, mesma seed/escultura/rig/configurações do `wolfSdf`. Usa LOD upstream `crowd`; detalhe baixo aumenta somente a distância de amostragem para 6. Superfície CPU DQ, material facetado com cores por vértice, sem shells/fins, olhos WebGL nativos. 13.808 triângulos base em HD, 6.708 em low (original HD: 149.992). Cache inclui espécie; worker existente aceita ambos. Integrado editor/JSON/API/arena/waves. Teste `node scripts/test.mjs --wolf-lowpoly-sdf`. Relatório `docs/INTEGRACAO-LOBO-LOW-POLY-SDF.md`. Não recuperar o antigo `wolfReferenceSdf`/Fauna Facetada rejeitado: esta variante não redesenha anatomia.
+
+**Lobisomem — Fauna SDF (05/10/2026):** nova espécie autoral `werewolfSdf`, preserva `werewolf`. Rig bípede de 20 ossos, SDF/pesos/DQ/pelagem/olhos da Fauna, pose/IK/golpe inspirados no anterior. Não existe lobisomem upstream: não reutilizar motor quadrúpede. Escultura em `src/werewolf-sdf-species.ts`, adaptador/worker próprios, editor/API/JSON/arena. Guia `docs/INTEGRACAO-LOBISOMEM-SDF.md`. Cinco espécies registradas na base SDF.
+
+**Caranguejeira — Fauna SDF (05/10/2026):** `tarantulaSdf` separada da Aranha antiga, variante upstream tarantula/fêmea. Rig próprio de oito patas, pelos/olhos/pedipalpos/presas, ameaça e avanço nativos. Guia `docs/INTEGRACAO-CARANGUEJEIRA-SDF.md`. Quatro espécies registradas na Fauna SDF; adaptador/worker próprios, editor, API e combate.
+
+**Rato — Fauna SDF (05/10/2026):** nova espécie `ratSdf`, preservando `rat`. Dez controles, pelagem nativa, bigodes/orelhas/cauda articulados, caminhar/correr/correr+ e mordida única. Adaptador e worker próprios, preparação por `prepareFauna`, identificação na interface/API/JSON e combate. Guia `docs/INTEGRACAO-RATO-SDF.md`. Agora há três espécies SDF: Javali, Lobo SDF e Rato SDF.
+
 Documento de passagem de contexto. Serve para continuar o trabalho em outra sessão ou em outro modelo sem precisar reconstruir o histórico. Leia inteiro antes de mexer no código: a seção **Armadilhas conhecidas** registra erros que já aconteceram mais de uma vez.
 
+**Lobo — Fauna SDF (05/10/2026):** espécie nova `wolfSdf`, sem substituir `wolf` ou seus presets. Herda ficha/configurações do Lobo atual, usa superfície/rig/pelagem upstream. Guia `docs/INTEGRACAO-LOBO-SDF.md`, adaptador `src/wolf-sdf-detail.ts`, worker incorporado no offline. `prepareFauna` prepara as três espécies SDF. Mordida upstream única de 0.95 s, impacto 0.5 s, independente do ataque antigo. As três espécies estão identificadas em `src/creature-builds.ts`.
+
 Última atualização: 26/09/2026.
+
+**Fauna Procedural — SDF (05/10/2026):** base usada pelo Javali, ID `fauna-procedural-sdf`. Antes de integrar outra espécie do `threejs-procedural-animals`, seguir `docs/FAUNA-PROCEDURAL-SDF.md` e preencher `docs/templates/INTEGRACAO-FAUNA-SDF.md`. Identidade e mapeamento em `src/creature-builds.ts`; etiqueta no editor, JSON e userData. `boar`, `wolfSdf` e `ratSdf` estão registrados nesta base; não marcar ou substituir as demais criaturas automaticamente. Ver também `docs/INTEGRACAO-JAVALI.md`. Fonte preservada em vendor, verificada por manifesto SHA-256.
 
 **Lenhador (29/09/2026):** preset `lenhador`, peças `lumber` em cabelo/barba/roupa e estilo opcional `faceted`. Ver `docs/LENHADOR.md` e `src/lumber-detail.ts`. A aba Corpo permite escolher o estilo da malha. Opções novas continuam fora do sorteio histórico. Referência interpretada por geometria procedural, com jaqueta curta e xadrez por vértices.
 

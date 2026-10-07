@@ -3,7 +3,7 @@ export type CourseBox={id:string;x:number;z:number;width:number;depth:number;bot
 export type CourseRamp={id:string;x:number;z:number;width:number;depth:number;near:number;far:number;color:string};
 export type CoursePit={id:string;x:number;z:number;width:number;depth:number};
 export type CoursePoint={id:string;label:string;x:number;z:number;yaw?:number};
-export type GameCourse={size:number;boxes:CourseBox[];ramps:CourseRamp[];pits:CoursePit[];points:CoursePoint[]};
+export type GameCourse={size:number;boxes:CourseBox[];ramps:CourseRamp[];pits:CoursePit[];points:CoursePoint[];terrainHeight?:(x:number,z:number)=>number};
 export function createGameCourse(height=1.8):GameCourse{
  const boxes:CourseBox[]=[
   {id:'Tronco de madeira',x:WOOD_TARGET.x,z:WOOD_TARGET.z,width:WOOD_TARGET.radius*2,depth:WOOD_TARGET.radius*2,bottom:0,top:WOOD_TARGET.height,color:'#89603b'},
@@ -34,7 +34,7 @@ export function createGameCourse(height=1.8):GameCourse{
 }
 export const insideRect=(x:number,z:number,r:{x:number;z:number;width:number;depth:number},pad=0)=>Math.abs(x-r.x)<r.width/2+pad&&Math.abs(z-r.z)<r.depth/2+pad;
 export function courseGround(course:GameCourse,x:number,z:number){
- let ground=course.pits.some(p=>insideRect(x,z,p))?null:0;
+ let ground=course.pits.some(p=>insideRect(x,z,p))?null:(course.terrainHeight?.(x,z)??0);
  for(const b of course.boxes)if(b.bottom===0&&insideRect(x,z,b))ground=Math.max(ground??-Infinity,b.top);
  for(const r of course.ramps)if(insideRect(x,z,r)){const t=Math.max(0,Math.min(1,(r.z+r.depth/2-z)/r.depth));ground=Math.max(ground??-Infinity,r.near+(r.far-r.near)*t);}
  return ground;
@@ -53,6 +53,7 @@ export function createCoursePhysics(course:GameCourse,height:number,radius:numbe
    const dx=(target.x-x)/steps,dz=(target.z-z)/steps;
    for(let i=0;i<steps;i++){
     const prev={x,z};x+=dx;z+=dz;
+    if(enabled&&course.terrainHeight&&(courseGround(course,x,z)??0)>y+.18){x=prev.x;z=prev.z;contacts.add('Encosta do terreno');}
     if(enabled)for(let pass=0;pass<4;pass++)for(const b of course.boxes){
      if(y>=b.top-.025||y+bodyHeight<=b.bottom+.005)continue;
      const qx=Math.max(b.x-b.width/2,Math.min(b.x+b.width/2,x)),qz=Math.max(b.z-b.depth/2,Math.min(b.z+b.depth/2,z));
@@ -70,7 +71,7 @@ export function createCoursePhysics(course:GameCourse,height:number,radius:numbe
     const ceiling=enabled?courseCeiling(course,x,z,radius):Infinity;if(vy>0&&y+bodyHeight>=ceiling){y=ceiling-bodyHeight;vy=0;contacts.add('Teto da passagem');}
     const support=courseGround(course,x,z);if(vy<=0&&support!==null&&y<=support){y=support;vy=0;grounded=true;}
    }
-   let respawned=false;if(y<-3){x=checkpoint.x;z=checkpoint.z;y=courseGround(course,x,z)??0;vy=0;grounded=true;pendingJump=false;respawned=true;contacts.add('Queda — retorno ao setor');}
+   let respawned=false;if(y<(course.terrainHeight?-25:-3)){x=checkpoint.x;z=checkpoint.z;y=courseGround(course,x,z)??0;vy=0;grounded=true;pendingJump=false;respawned=true;contacts.add('Queda — retorno ao setor');}
    if(crouched&&y+height>courseCeiling(course,x,z,0))lowPassageOccupied=true;
    if(y+height<=courseCeiling(course,x,z,radius)||respawned)lowPassageOccupied=false;
    return {x,z,y,grounded,contacts:[...contacts],respawned};

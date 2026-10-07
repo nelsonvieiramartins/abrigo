@@ -13,6 +13,11 @@ import {buildDetailedSpider} from './spider-detail';
 import {buildDetailedRat} from './rat-detail';
 import {buildDetailedSkeleton} from './skeleton-detail';
 import {buildWerewolf} from './werewolf';
+import {createBoar} from './boar-detail';
+import {createWolfSdf} from './wolf-sdf-detail';
+import {createRatSdf} from './rat-sdf-detail';
+import {createWerewolfSdf} from './werewolf-sdf-detail';
+import {createTarantulaSdf} from './tarantula-sdf-detail';
 import {validateCreatureSpec,type CreatureSpec,type CreatureMotion,type CreatureDetail} from './creature-schema';
 
 export interface CreatureModel {
@@ -24,6 +29,11 @@ export interface CreatureModel {
 export function createCreature(raw:CreatureSpec,options:{detail?:CreatureDetail;instancing?:boolean}={}):CreatureModel {
   const spec=validateCreatureSpec(raw),detail=options.detail??'high';
   if(detail!=='low'&&detail!=='high')throw new Error('Detalhe de criatura inválido.');
+  if(spec.species==='boar')return createBoar(spec,detail,options.instancing===false);
+  if((spec.species==='wolfSdf'||spec.species==='wolfLowpolySdf'))return createWolfSdf(spec,detail,options.instancing===false);
+  if(spec.species==='ratSdf')return createRatSdf(spec,detail,options.instancing===false);
+  if(spec.species==='werewolfSdf')return createWerewolfSdf(spec,detail,options.instancing===false);
+  if(spec.species==='tarantulaSdf')return createTarantulaSdf(spec,detail,options.instancing===false);
   const root=new THREE.Group(),nodes:Record<string,THREE.Object3D>={},sockets:Record<string,THREE.Object3D>={};
   root.name=spec.name;root.scale.setScalar(spec.body.scale);root.userData.creatureSpec=spec;root.userData.rig={kind:'procedural-creature',species:spec.species};
   const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>(),rng=seededRandom(spec.seed+':geometry'),segments=detail==='low'?8:16;

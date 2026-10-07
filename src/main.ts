@@ -1,6 +1,7 @@
 import {loadZombiePresets,saveZombiePreset} from './zombie-presets';
 import {icon} from './icons';
 import {mountGameTest} from './game-test';
+import {mountMapEditor} from './map-editor';
 import {loadItemSetup,restoreItemSetup,saveItemSetup} from './item-setups';
 import {mountCreatureEditor} from './creature-editor';
 import {mountObjectEditor} from './object-editor';
@@ -238,6 +239,7 @@ villainButton.addEventListener('click',()=>switchCategory('villains'));
 $('#mode-characters').addEventListener('click',()=>switchCategory('characters'));
 categoryChrome();
 mountObjectEditor(preview);
+mountMapEditor(preview);
 mountGameTest(()=>clone(spec),preview);
 // Deep link to a tab, e.g. ?tab=face opens the expressions.
 {if(new URLSearchParams(location.search).get('detail')==='uhd')$('#uhd').click();const t=new URLSearchParams(location.search).get('tab');if(t)document.querySelector<HTMLElement>(`[data-tab="${t}"]`)?.click();}

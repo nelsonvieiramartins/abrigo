@@ -5,6 +5,14 @@ export {DEFAULT,randomCharacter,presetCharacter,validateSpec,characterStats,clon
 export type {CharacterSpec,Motion} from './schema';
 export type {CharacterModel,CharacterOptions,Detail,Expression} from './character';
 export {createCreature} from './creature';
+export {prepareBoar} from './boar-detail';
+export {prepareWolfSdf} from './wolf-sdf-detail';
+export {prepareRatSdf} from './rat-sdf-detail';
+export {prepareWerewolfSdf} from './werewolf-sdf-detail';
+export {prepareTarantulaSdf} from './tarantula-sdf-detail';
+export {prepareFauna} from './fauna-prepare';
+export {FAUNA_PROCEDURAL_SDF,CREATURE_BUILDS,CREATURE_BUILD_BY_SPECIES,getCreatureBuild} from './creature-builds';
+export type {CreatureBuild} from './creature-builds';
 export type {CreatureModel} from './creature';
 export {CREATURE_SPECIES,presetCreature,randomCreature,validateCreatureSpec} from './creature-schema';
 export type {CreatureSpec,CreatureSpecies,CreatureMotion,CreatureDetail,SpiderShape,ScorpionShape,RatShape} from './creature-schema';

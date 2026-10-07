@@ -1,4 +1,8 @@
+import {TARANTULA_SDF_ATTACK_DURATION,TARANTULA_SDF_ATTACK_IMPACT,TARANTULA_SDF_ATTACK_COOLDOWN} from './tarantula-sdf-detail';
+import {RAT_SDF_ATTACK_DURATION,RAT_SDF_ATTACK_IMPACT,RAT_SDF_ATTACK_COOLDOWN} from './rat-sdf-detail';
 import {RAT_RUN_SPEED} from './rat-detail';
+import {BOAR_ATTACK_DURATION,BOAR_ATTACK_IMPACT,BOAR_ATTACK_COOLDOWN} from './boar-detail';
+import {WOLF_SDF_ATTACK_DURATION,WOLF_SDF_ATTACK_IMPACT,WOLF_SDF_ATTACK_COOLDOWN} from './wolf-sdf-detail';
 import {CREATURE_SPECIES,presetCreature,type CreatureSpecies,type CreatureMotion,type CreatureSpec} from './creature-schema';
 import {ATTACK_SPEED,isAttack} from './attack-timing';
 import type {GameFrame} from './game-controls';
@@ -30,7 +34,7 @@ export function createCombatRuntime(raw:CombatConfig,course:GameCourse,obstacles
  let priorAttack=false,priorTime=-1,hitIds=new Set<string>();
  const spawn=(player:GameFrame)=>{
   const types=Object.entries(config.waves[wave].enemies).flatMap(([species,count])=>Array.from({length:count!},()=>species as CreatureSpecies));
-  types.forEach((species,i)=>{const spec=presetCreature(species),radius=species==='werewolf'?.48:species==='wolf'?.38:species==='rat'?.12:.32;
+  types.forEach((species,i)=>{const spec=presetCreature(species),radius=species==='tarantulaSdf'?.09:species==='boar'?.4:(species==='werewolf'||species==='werewolfSdf')?.48:(species==='wolf'||species==='wolfSdf'||species==='wolfLowpolySdf')?.38:(species==='rat'||species==='ratSdf')?.12:.32;
    let x=0,z=0,found=false;
    for(let attempt=0;attempt<120;attempt++){const angle=(i/types.length+attempt*.381966)*Math.PI*2,r=5+Math.floor(attempt/24)*.5;
     x=player.x+Math.sin(angle)*r;z=player.z+Math.cos(angle)*r;
@@ -65,13 +69,13 @@ export function createCombatRuntime(raw:CombatConfig,course:GameCourse,obstacles
     const dx=player.x-e.x,dz=player.z-e.z,d=Math.hypot(dx,dz),range=playerRadius+e.radius+.22;e.yaw=Math.atan2(dx,dz);
     if(e.motion==='attack'){
      e.time+=dt;
-     const wolf=e.spec.species==='wolf',werewolf=e.spec.species==='werewolf',bat=e.spec.species==='bat',snake=e.spec.species==='snake',rat=e.spec.species==='rat';
-     if(!e.hit&&e.time>=(snake?SNAKE_ATTACK_IMPACT:bat?BAT_ATTACK_IMPACT:werewolf?WEREWOLF_ATTACK_IMPACT:wolf?WOLF_ATTACK_IMPACT:rat?.28:.6)){e.hit=true;if(d<=range+.15&&Math.abs((player.y??0)-e.y)<.7)health=Math.max(0,health-e.spec.behavior.damage);}
-     if(e.time>=(snake?SNAKE_ATTACK_DURATION:bat?BAT_ATTACK_DURATION:werewolf?WEREWOLF_ATTACK_DURATION:wolf?WOLF_ATTACK_DURATION:rat?.68:1.2)){e.motion='idle';e.time=0;e.cooldown=snake?SNAKE_ATTACK_COOLDOWN:bat?BAT_ATTACK_COOLDOWN:werewolf?WEREWOLF_ATTACK_COOLDOWN:wolf?WOLF_ATTACK_COOLDOWN:.8;}
+     const tarantulaSdf=e.spec.species==='tarantulaSdf',ratSdf=e.spec.species==='ratSdf',wolfSdf=(e.spec.species==='wolfSdf'||e.spec.species==='wolfLowpolySdf'),wolf=e.spec.species==='wolf',werewolf=(e.spec.species==='werewolf'||e.spec.species==='werewolfSdf'),bat=e.spec.species==='bat',snake=e.spec.species==='snake',rat=e.spec.species==='rat',boar=e.spec.species==='boar';
+     if(!e.hit&&e.time>=(tarantulaSdf?TARANTULA_SDF_ATTACK_IMPACT:ratSdf?RAT_SDF_ATTACK_IMPACT:wolfSdf?WOLF_SDF_ATTACK_IMPACT:boar?BOAR_ATTACK_IMPACT:snake?SNAKE_ATTACK_IMPACT:bat?BAT_ATTACK_IMPACT:werewolf?WEREWOLF_ATTACK_IMPACT:wolf?WOLF_ATTACK_IMPACT:rat?.28:.6)){e.hit=true;if(d<=range+.15&&Math.abs((player.y??0)-e.y)<.7)health=Math.max(0,health-e.spec.behavior.damage);}
+     if(e.time>=(tarantulaSdf?TARANTULA_SDF_ATTACK_DURATION:ratSdf?RAT_SDF_ATTACK_DURATION:wolfSdf?WOLF_SDF_ATTACK_DURATION:boar?BOAR_ATTACK_DURATION:snake?SNAKE_ATTACK_DURATION:bat?BAT_ATTACK_DURATION:werewolf?WEREWOLF_ATTACK_DURATION:wolf?WOLF_ATTACK_DURATION:rat?.68:1.2)){e.motion='idle';e.time=0;e.cooldown=tarantulaSdf?TARANTULA_SDF_ATTACK_COOLDOWN:ratSdf?RAT_SDF_ATTACK_COOLDOWN:wolfSdf?WOLF_SDF_ATTACK_COOLDOWN:boar?BOAR_ATTACK_COOLDOWN:snake?SNAKE_ATTACK_COOLDOWN:bat?BAT_ATTACK_COOLDOWN:werewolf?WEREWOLF_ATTACK_COOLDOWN:wolf?WOLF_ATTACK_COOLDOWN:.8;}
     }else if(d<=range&&e.cooldown===0){e.motion='attack';e.time=0;e.hit=false;}
     else if(d>range){
-     e.motion=['wolf','werewolf','spider','scorpion','skeleton','rat'].includes(e.spec.species)?'run':'move';e.time+=dt;
-     const speed=e.spec.species==='rat'?RAT_RUN_SPEED*(e.spec.rat?.legLength??1)*e.spec.body.scale:Math.min(e.spec.behavior.speed,2.5),distance=Math.min(speed*dt,Math.max(0,d-range)),target={x:e.x+dx/d*distance,z:e.z+dz/d*distance};
+     e.motion=['werewolfSdf','wolfLowpolySdf','wolfSdf','boar','wolf','werewolf','spider','tarantulaSdf','scorpion','skeleton','rat','ratSdf'].includes(e.spec.species)?'run':'move';e.time+=dt;
+     const speed=e.spec.species==='tarantulaSdf'?.1*e.spec.anatomy.legs*e.spec.body.scale:e.spec.species==='ratSdf'?1.25*(e.spec.rat?.legLength??1)*e.spec.body.scale:e.spec.species==='rat'?RAT_RUN_SPEED*(e.spec.rat?.legLength??1)*e.spec.body.scale:Math.min(e.spec.behavior.speed,2.5),distance=Math.min(speed*dt,Math.max(0,d-range)),target={x:e.x+dx/d*distance,z:e.z+dz/d*distance};
      const limit=course.size/2-e.radius;target.x=Math.max(-limit,Math.min(limit,target.x));target.z=Math.max(-limit,Math.min(limit,target.z));
      const others=[...obstacles,...colliders().filter(o=>o.id!==e.id),{id:'player',x:player.x,z:player.z,radius:playerRadius,yaw:player.yaw}];
      const moved=resolveGameMovement(e,target,e.radius,others),p=physics.get(e.id)!.step(dt,e,moved,false,false,0,true,false);e.x=p.x;e.z=p.z;e.y=p.y;

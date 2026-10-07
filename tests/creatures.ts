@@ -1,5 +1,12 @@
 import './skeleton';
 import './rat';
+import './boar';
+import './wolf-sdf';
+import './wolf-lowpoly-sdf';
+import './creature-categories';
+import './rat-sdf';
+import './tarantula-sdf';
+import './werewolf-sdf';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as THREE from 'three';
@@ -14,11 +21,11 @@ for(const species of Object.keys(CREATURE_SPECIES) as CreatureSpecies[]){
   for(const edge of ['min','max'] as const){const s=presetCreature(species);for(const f of CREATURE_FIELDS[species])s.anatomy[f.key]=f[edge];if(s.rat){s.rat.bodyLength=s.anatomy.length;s.rat.bodyWidth=s.anatomy.spread;s.rat.legLength=s.anatomy.legs;s.rat.earSize=s.anatomy.ears;s.rat.tailLength=s.anatomy.tail;s.rat.tailThickness=s.anatomy.thickness;}if(s.spider){s.spider.legLength=s.anatomy.legs;s.spider.legSpread=s.anatomy.spread;s.spider.legThickness=s.anatomy.thickness;}if(s.scorpion){s.scorpion.legLength=s.anatomy.legs;s.scorpion.legSpread=s.anatomy.spread;s.scorpion.legThickness=s.anatomy.thickness;s.scorpion.tailLength=s.anatomy.tail;}s.body.scale=edge==='min'?.5:1.8;s.body.bulk=edge==='min'?0:1;samples.push(s);}
   for(const s of samples){assert.deepEqual(validateCreatureSpec(JSON.parse(JSON.stringify(s))),s);
     for(const detail of ['low','high'] as const){const c=createCreature(s,{detail});count++;assert(c.sockets.target);assert.equal(c.detail,detail);
-      maxima[detail]=Math.max(maxima[detail],c.stats.triangles);assert(c.stats.triangles<65000);
+      maxima[detail]=Math.max(maxima[detail],c.stats.triangles);assert(c.stats.triangles<(species==='tarantulaSdf'?220000:['werewolfSdf','boar','wolfLowpolySdf','wolfSdf','ratSdf'].includes(species)?160000:65000),`${species}/${detail}: ${c.stats.triangles} triangles exceed budget`);
       const scene=new THREE.Scene();scene.add(c.root);const position=c.root.position.clone(),rotation=c.root.quaternion.clone();
-      if(species!=='rat')assert.throws(()=>c.update(0,'runPlus'),/Correr\+/);
+      if(!['rat','ratSdf'].includes(species))assert.throws(()=>c.update(0,'runPlus'),/Correr\+/);
       if(species!=='skeleton')assert.throws(()=>c.update(0,'sprint'),/Correr\+/);
-      for(const motion of (species==='rat'?['idle','move','run','runPlus','attack'] as const:species==='skeleton'?['idle','move','run','sprint','attack'] as const:['wolf','werewolf','spider','scorpion'].includes(species)?['idle','move','run','attack'] as const:['idle','move','attack'] as const))for(const t of [0,.17,.7,1.8,20]){c.update(t,motion);c.root.updateMatrixWorld(true);
+      for(const motion of (['rat','ratSdf'].includes(species)?['idle','move','run','runPlus','attack'] as const:species==='skeleton'?['idle','move','run','sprint','attack'] as const:['werewolfSdf','wolfLowpolySdf','wolfSdf','boar','wolf','werewolf','spider','tarantulaSdf','scorpion'].includes(species)?['idle','move','run','attack'] as const:['idle','move','attack'] as const))for(const t of [0,.17,.7,1.8,20]){c.update(t,motion);c.root.updateMatrixWorld(true);
         c.root.traverse((o:any)=>{for(const v of o.matrixWorld.elements)assert(Number.isFinite(v));if(o.isMesh)for(const key of ['position','normal'])for(const v of o.geometry.attributes[key].array)assert(Number.isFinite(v),species+' '+key);});
         assert(c.root.position.equals(position));assert(c.root.quaternion.equals(rotation));
         const box=new THREE.Box3().setFromObject(c.root);assert(!box.isEmpty());assert(box.min.y>-.07*s.body.scale,`${species} intersects floor: ${box.min.y}`);
@@ -278,4 +285,4 @@ for(const t of [0,.3,2]){instanced.update(t,'move');fallback.update(t,'move');bo
 instanced.dispose();instanced.dispose();fallback.dispose();assert.equal(releasedInstances,3);
 console.log(JSON.stringify({refinedAnimals:refinedStats,checks:['same sockets at both detail levels','moving membranes, jaws, fangs and seamless snake normals','three instanced swarm meshes match the compatibility path','instance GPU buffers disposed once']},null,2));
 console.log(JSON.stringify({wolfDetail:wolfStats,checks:['16 toes and claws, sculpted ears and continuous torso/neck','same sockets, articulated knees and blinking lids','batched draw budget below 50 meshes and 55k triangles']},null,2));
-console.log(JSON.stringify({creatures:count,maxTriangles:maxima,checks:['nine species, two detail levels, extreme anatomy','seed determinism and JSON validation','finite geometry and animated transforms','floor bounds and external root transform preserved','all owned resources disposed exactly once']},null,2));
+console.log(JSON.stringify({creatures:count,maxTriangles:maxima,checks:[`${Object.keys(CREATURE_SPECIES).length} species, two detail levels, extreme anatomy`,'seed determinism and JSON validation','finite geometry and animated transforms','floor bounds and external root transform preserved','all owned resources disposed exactly once']},null,2));
