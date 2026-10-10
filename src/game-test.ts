@@ -8,6 +8,9 @@ import {prepareFauna} from './fauna-prepare';
 import {presetCreature} from './creature-schema';
 import {COMBAT_STORE,loadCombatConfig,validateCombatConfig,type CombatConfig} from './game-combat';
 import {mountGameMapPicker} from './game-map-picker';
+import {mountEnvironmentControls} from './environment-controls';
+import {PERFORMANCE_KEY,loadGamePerformance} from './game-performance';
+import {mountPerformanceControls} from './game-performance-controls';
 
 const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const keyName=(key:string)=>key?({Space:'Espaço',ShiftLeft:'Shift esquerdo',ControlLeft:'Ctrl esquerdo',ArrowUp:'↑',ArrowDown:'↓',ArrowLeft:'←',ArrowRight:'→'}[key]??key.replace(/^Key|^Digit/,'')):'Sem vínculo';
@@ -43,6 +46,27 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
  const renderSectors=()=>{const html=course.points.map(p=>`<option value="${p.id}" ${currentSector===p.id?'selected':''}>${p.label}</option>`).join('');$('game-sector').innerHTML=html;$('game-quick-sector').innerHTML=html;};renderSectors();
  let config;try{config=loadGameControls(localStorage);}catch{config=defaultGameControls();}
  let controller=createGameController(config),preview:ReturnType<typeof createPreview>|null=null,running=false,capture:{command:GameCommand;kind:'key'|'pad'}|null=null;
+ let showGameGrid=true;
+ const gridButtons=['game-grid','game-quick-grid'].map((id,index)=>{
+  const toggle=document.createElement('button');toggle.id=id;toggle.className='button';
+  (index===0?dialog.querySelector('.game-header-actions')!:dialog.querySelector('.game-arena-full-controls')!).prepend(toggle);
+  return toggle;
+ });
+ const syncGameGrid=()=>{preview?.setGameGridVisible(showGameGrid);for(const toggle of gridButtons){toggle.textContent=showGameGrid?'Grade: ON':'Grade: OFF';toggle.setAttribute('aria-pressed',String(showGameGrid));}};
+ for(const toggle of gridButtons)toggle.onclick=()=>{showGameGrid=!showGameGrid;syncGameGrid();if(running)$('game-arena').focus();};
+ syncGameGrid();
+ let performanceSettings=loadGamePerformance(localStorage);
+ const savePerformance=()=>localStorage.setItem(PERFORMANCE_KEY,JSON.stringify(performanceSettings));
+ const applyPerformance=(value:typeof performanceSettings)=>{performanceSettings=value;preview?.setGamePerformance(value);performanceControls.sync();quickPerformanceControls.sync();};
+ const performanceControls=mountPerformanceControls(dialog.querySelector('.game-bindings')!,()=>performanceSettings,applyPerformance,savePerformance);
+ const quickPerformanceRow=document.createElement('div');quickPerformanceRow.className='game-arena-full-controls';overlay.append(quickPerformanceRow);
+ const quickPerformanceControls=mountPerformanceControls(quickPerformanceRow,()=>performanceSettings,applyPerformance,savePerformance);
+ const fpsStatus=document.createElement('span');fpsStatus.className='game-performance-stats';fpsStatus.textContent='FPS · medindo…';overlay.prepend(fpsStatus);let lastStats=0;
+ const environmentPanel=document.createElement('details');environmentPanel.innerHTML='<summary>Ambiente · Controles do Bioma</summary><p>Ajustes temporários deste teste. Para guardar, configure e salve na guia Ambiente do mapa.</p>';dialog.querySelector('.game-bindings')!.prepend(environmentPanel);
+ const quickEnvironment=document.createElement('details');quickEnvironment.className='game-environment-quick';quickEnvironment.innerHTML='<summary>Ambiente</summary>';const environmentQuickRow=document.createElement('div');environmentQuickRow.className='game-arena-full-controls';environmentQuickRow.append(quickEnvironment);overlay.append(environmentQuickRow);
+ const environmentControls=mountEnvironmentControls(environmentPanel,()=>preview,settings=>{preview?.setEnvironment(settings);environmentQuickControls.sync();});
+ const environmentQuickControls=mountEnvironmentControls(quickEnvironment,()=>preview,settings=>{preview?.setEnvironment(settings);environmentControls.sync();});
+ environmentPanel.ontoggle=()=>environmentControls.sync();quickEnvironment.ontoggle=()=>environmentQuickControls.sync();
  let mapEditor:ReturnType<typeof mountGameMapPicker>;
  const keys=new Set<string>(),pendingKeys=new Set<string>();let priorPad:boolean[]=[],state:GameFrame={motion:'idle',time:0,x:0,z:0,yaw:0},padText='';
  let obstacles:GameObstacle[]=[],bodyRadius=.4;
@@ -76,6 +100,7 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
  };
  const rebuild=()=>{config=validateGameControls(config);controller=createGameController(config);setupCollisions();state={motion:'idle',time:0,x:0,z:0,yaw:0};currentSector='start';renderSectors();keys.clear();pendingKeys.clear();};
  const driver=(dt:number):GameFrame=>{
+  const now=performance.now();if(now-lastStats>750&&preview){const stats=preview.gamePerformanceStats;fpsStatus.textContent=`${Math.round(stats.fps)} FPS · ${stats.frameMs.toFixed(1)} ms/quadro · ${stats.calls} chamadas/quadro`;lastStats=now;}
   let pads:Gamepad[]=[];try{pads=Array.from(navigator.getGamepads?.()??[]).filter((p):p is Gamepad=>!!p&&p.connected);}catch{}
   const pad=config.gamepad<0?pads[0]:pads.find(p=>p.index===config.gamepad),pressed=pad?.buttons.map(b=>b.pressed)??[];
   const live=pad?`${pad.id} · botão(s): ${pressed.flatMap((on,i)=>on?[i]:[]).join(', ')||'nenhum'}`:'Nenhum joystick conectado. Conecte e pressione um botão para o navegador reconhecer.';
@@ -90,7 +115,7 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
   $('game-motion').textContent=(running?'':'Pausado · ')+MOTIONS[state.motion];$('game-position').textContent=`X ${state.x.toFixed(2).replace('.',',')} · Z ${state.z.toFixed(2).replace('.',',')}`;
   $('game-position').textContent+=` · altura ${(state.y??0).toFixed(2)} m`;
   $('game-sector-title').textContent=course.points.find(p=>p.id===currentSector)?.label??'Circuito';$('game-arena-state').textContent=`${running?'':'Pausado · '}${MOTIONS[state.motion]} · ${state.aimLocked?'Mira travada':'Mira livre'} · quedas ${state.falls??0}`;
-  $('game-collision-status').textContent=!$<HTMLInputElement>('game-collision-enabled').checked?'Colisão OFF · passagem livre':state.contacts?.length?'Contato: '+state.contacts.join(', '):`${obstacles.length} personagens fixos · colisão ON`;
+  $('game-collision-status').textContent=!$<HTMLInputElement>('game-collision-enabled').checked?'Colisão OFF · passagem livre':state.contacts?.length?'Contato: '+state.contacts.join(', '):`${obstacles.length} personagens fixos${course.cylinders?.length?` · ${course.cylinders.length} obstáculos naturais`:''} · colisão ON`;
   $('game-aim-status').textContent=running&&state.aimLocked?'Mira TRAVADA · orientação mantida enquanto segura':`Mira livre · Travar mira: ${keyName(config.bindings.aimLock.key)} / botão ${config.bindings.aimLock.button??'sem vínculo'} (segurar)`;
   woodStatus.hidden=currentSector!=='wood';woodStatus.textContent=preview?.gameWoodStatus??'Use Machado de teste e aproxime a lâmina';
   combatStatus.textContent=preview?.gameCombatStatus??'Combate desligado';combatStatus.hidden=preview?.gameCombatPhase==='off'||!preview;
@@ -99,11 +124,11 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
  button.addEventListener('click',()=>{
   stop();preview?.clearGameCombat();rebuild();renderSettings();const spec=clone(getCharacter());$('game-character').textContent=spec.name+' · personagem atual e configurações de itens';
   bodyRadius=characterCollisionRadius(spec);bodyHeight=spec.body.height;course=createGameCourse(bodyHeight);currentSector='start';renderSectors();obstacles=proceduralTestCharacters(`${Date.now()}:${Math.random()}`);setupCollisions();
-  dialog.showModal();editorPreview?.setActive(false);(window as any).__ABRIGO_MAPS__?.pauseRendering(true);
-  try{if(!preview)preview=createPreview($('game-arena'),()=>{});preview.setActive(true);preview.setCharacter(spec);preview.view('iso');preview.setGameDriver(driver);preview.setGameObstacles(spec,obstacles,bodyRadius);preview.setGameCourse(course);mapEditor.open();applyMapCourse();preview.showGameCollisionAreas($<HTMLInputElement>('game-collision-areas').checked);}catch(e){message('Não foi possível abrir a prévia: '+(e as Error).message);}
+  dialog.showModal();editorPreview?.setActive(false);(window as any).__ABRIGO_CREATURES__?.getPreview()?.setActive(false);(window as any).__ABRIGO_MAPS__?.pauseRendering(true);
+  try{if(!preview)preview=createPreview($('game-arena'),()=>{});preview.setActive(true);preview.setCharacter(spec);preview.view('iso');preview.setGameDriver(driver);preview.setGamePerformance(performanceSettings);preview.setGameObstacles(spec,obstacles,bodyRadius);preview.setGameCourse(course);mapEditor.open();applyMapCourse();preview.showGameCollisionAreas($<HTMLInputElement>('game-collision-areas').checked);}catch(e){message('Não foi possível abrir a prévia: '+(e as Error).message);}
  });
  $('game-close').onclick=()=>dialog.close();
- dialog.addEventListener('close',()=>{combatPreparation++;stop();mapEditor.close();preview?.clearGameCombat();preview?.setActive(false);preview?.clearGameObstacles();preview?.clearGameCourse();const normal=document.querySelector<HTMLElement>('.workspace:not(.creature-workspace):not(.object-workspace):not(.map-workspace)');editorPreview?.setActive(!!normal&&!normal.hidden);(window as any).__ABRIGO_MAPS__?.pauseRendering(false);button.focus();});
+ dialog.addEventListener('close',()=>{combatPreparation++;stop();mapEditor.close();preview?.clearGameCombat();preview?.setActive(false);preview?.clearGameObstacles();preview?.clearGameCourse();const normal=document.querySelector<HTMLElement>('.workspace:not(.creature-workspace):not(.object-workspace):not(.map-workspace)');editorPreview?.setActive(!!normal&&!normal.hidden);(window as any).__ABRIGO_MAPS__?.pauseRendering(false);const creatures=document.querySelector<HTMLElement>('.creature-workspace');(window as any).__ABRIGO_CREATURES__?.getPreview()?.setActive(!!creatures&&!creatures.hidden);button.focus();});
  $('game-collision-enabled').onchange=()=>{stop();setupCollisions();goToSector(currentSector);};
  $('game-collision-areas').onchange=()=>preview?.showGameCollisionAreas($<HTMLInputElement>('game-collision-areas').checked);
  $('game-play').onclick=()=>{if(running){stop();return;}if(!preview)return;mapEditor.setEditing(false);capture=null;keys.clear();running=true;$('game-play').textContent=$('game-quick-play').textContent='Pausar controles';$('game-play').setAttribute('aria-pressed','true');$('game-arena').focus();};
@@ -158,8 +183,10 @@ export function mountGameTest(getCharacter:()=>CharacterSpec,editorPreview:Retur
   stop();combatPreparation++;preview?.clearGameCombat();
   courseHelp.textContent=mapEditor.enabled?'Mapa editável 100 × 100 m: personagens e criaturas acompanham o relevo. Edite Terreno e Efeitos, salve e clique em Jogar. Água é visual; não há natação. O combate por ondas também funciona neste mapa.':'Circuito 48 × 48 m: rampas, vão, caixas, passagem baixa (C), corte de madeira e combate por ondas. Configure e inicie o combate no painel. Fora do combate, não há dano aos personagens.';
   woodControls.hidden=mapEditor.enabled;woodQuick.hidden=mapEditor.enabled;
-  if(mapEditor.enabled&&preview?.gameMap){preview.clearGameCourse();course={size:100,boxes:[],ramps:[],pits:[],points:[{id:'start',label:'Mapa editável / início',x:0,z:0},{id:'combat',label:'Combate no mapa editável',x:0,z:16,yaw:Math.PI}],terrainHeight:(x,z)=>preview?.gameMap?.terrain.heightAt(x,z)??0};preview.settleGameMap();}
+  if(mapEditor.enabled&&preview?.gameMap){preview.clearGameCourse();course={size:100,boxes:[],ramps:[],pits:[],points:[{id:'start',label:'Mapa editável / início',x:0,z:0},{id:'combat',label:'Combate no mapa editável',x:0,z:16,yaw:Math.PI}],get cylinders(){return preview?.gameMap?.vegetation.colliders??[];},terrainHeight:(x,z)=>preview?.gameMap?.terrain.heightAt(x,z)??0};preview.settleGameMap();}
   else{course=createGameCourse(bodyHeight);preview?.setGameCourse(course);preview?.settleGameMap();}
+  syncGameGrid();
+  environmentControls.sync();environmentQuickControls.sync();
   const x=state.x,z=state.z,yaw=state.yaw;setupCollisions();controller.teleport(x,z,yaw);state=controller.update(0,new Set());if(!course.points.some(p=>p.id===currentSector))currentSector='start';renderSectors();
  };
  mapEditor=mountGameMapPicker(dialog,{preview:()=>preview,stop,changed:applyMapCourse});

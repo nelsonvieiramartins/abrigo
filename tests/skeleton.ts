@@ -33,7 +33,7 @@ for(const detail of ['high','low'] as const)for(const proportion of [1,.85,1.15]
  }
  // An airborne foot advances +Z; a planted foot travels -Z relative to the moving body.
  for(const motion of ['move','run','sprint'] as const){
-  const period=2*Math.PI/(motion==='sprint'?13:motion==='run'?9:5.6);
+  const period=2*Math.PI/(motion==='sprint'?13:motion==='run'?10:6);
   for(const side of ['L','R']){
    const phaseOffset=side==='L'?0:.5;
    const sample=(phase:number)=>{animate((phase+phaseOffset)*period,motion);body.updateMatrixWorld(true);return nodes['foot'+side].getWorldPosition(new THREE.Vector3());};
@@ -68,6 +68,19 @@ for(const detail of ['high','low'] as const)for(const proportion of [1,.85,1.15]
   }
  }
  animate(0,'sprint');assert(Math.abs(nodes.chest.rotation.x-.22)<1e-6,'Missing sprint lean');
+ for(const [motion,frequency,swing,elbow,lean] of [['move',6,.4,-.13,0],['run',10,.7,-1.1,.11],['sprint',13,.95,-1.35,.22]] as const){
+  for(const t of [0,.17,.63]){
+   animate(t,motion);
+   assert(Math.abs(nodes.chest.rotation.x-lean)<1e-6,'Character torso lean '+motion);
+   assert(Math.abs(nodes.chest.rotation.z-Math.sin(t*frequency)*.025)<1e-6,'Character torso sway '+motion);
+   for(const side of ['L','R']){
+    const phase=t*frequency+(side==='R'?Math.PI:0);
+    assert(Math.abs(nodes['shoulder'+side].rotation.x+Math.cos(phase)*swing)<1e-6,'Character arm swing '+motion);
+    assert(Math.abs(nodes['elbow'+side].rotation.x-elbow)<1e-6,'Character elbow bend '+motion);
+   }
+  }
+ }
+ animate(0,'sprint');
  for(const side of ['L','R'])assert(Math.abs(nodes['elbow'+side].rotation.x+1.35)<1e-6,'Missing sprint elbow bend');
  assert(Math.abs(nodes.shoulderL.rotation.x+.95)<1e-6&&Math.abs(nodes.shoulderR.rotation.x-.95)<1e-6,'Sprint arms not opposed');
  animate(0,'idle');assert(Math.abs(nodes.chest.rotation.x)<1e-6,'Sprint lean persists after reset');

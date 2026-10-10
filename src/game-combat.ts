@@ -14,6 +14,7 @@ import {BAT_ATTACK_DURATION,BAT_ATTACK_IMPACT,BAT_ATTACK_COOLDOWN} from './bat-a
 import {SNAKE_ATTACK_DURATION,SNAKE_ATTACK_IMPACT,SNAKE_ATTACK_COOLDOWN} from './snake-attack';
 
 export const COMBAT_STORE='abrigo-combat-waves-v1';
+export const GAME_CREATURE_SCALE=.8;
 export type CombatConfig={version:1;waves:{enemies:Partial<Record<CreatureSpecies,number>>}[];interval:number;health:number;damage:number};
 export type CombatEnemy={id:string;spec:CreatureSpec;x:number;z:number;y:number;yaw:number;radius:number;health:number;motion:CreatureMotion;time:number;hit:boolean;cooldown:number};
 export const defaultCombatConfig=():CombatConfig=>({version:1,waves:[{enemies:{skeleton:2}},{enemies:{skeleton:2,spider:2}},{enemies:{werewolf:1,wolf:2}}],interval:4,health:100,damage:30});
@@ -34,18 +35,19 @@ export function createCombatRuntime(raw:CombatConfig,course:GameCourse,obstacles
  let priorAttack=false,priorTime=-1,hitIds=new Set<string>();
  const spawn=(player:GameFrame)=>{
   const types=Object.entries(config.waves[wave].enemies).flatMap(([species,count])=>Array.from({length:count!},()=>species as CreatureSpecies));
-  types.forEach((species,i)=>{const spec=presetCreature(species),radius=species==='tarantulaSdf'?.09:species==='boar'?.4:(species==='werewolf'||species==='werewolfSdf')?.48:(species==='wolf'||species==='wolfSdf'||species==='wolfLowpolySdf')?.38:(species==='rat'||species==='ratSdf')?.12:.32;
+  types.forEach((species,i)=>{const spec=presetCreature(species),radius=GAME_CREATURE_SCALE*(species==='tarantulaSdf'?.09:species==='boar'?.4:(species==='werewolf'||species==='werewolfSdf')?.48:(species==='wolf'||species==='wolfSdf'||species==='wolfLowpolySdf')?.38:(species==='rat'||species==='ratSdf')?.12:.32);
    let x=0,z=0,found=false;
    for(let attempt=0;attempt<120;attempt++){const angle=(i/types.length+attempt*.381966)*Math.PI*2,r=5+Math.floor(attempt/24)*.5;
     x=player.x+Math.sin(angle)*r;z=player.z+Math.cos(angle)*r;
     if(Math.abs(x)>course.size/2-radius||Math.abs(z)>course.size/2-radius||courseGround(course,x,z)!==0)continue;
     if(course.boxes.some(b=>Math.abs(x-b.x)<b.width/2+radius&&Math.abs(z-b.z)<b.depth/2+radius))continue;
+    if(course.cylinders?.some(c=>Math.hypot(x-c.x,z-c.z)<radius+c.radius))continue;
     if([...obstacles,...enemies].some(o=>Math.hypot(x-o.x,z-o.z)<radius+o.radius+.15))continue;found=true;break;
    }
    // A blocked spawn is retried by the wave rather than placed inside geometry.
    if(!found){error='Sem espaço para a onda. Reinicie no setor Combate.';return;}
    const id=`combat-${++serial}`,e:CombatEnemy={id,spec,x,z,y:0,yaw:0,radius,health:spec.behavior.health,motion:'move',time:0,hit:false,cooldown:i*.08};
-   const p=createCoursePhysics(course,1.6,radius);p.reset(x,z);physics.set(id,p);enemies.push(e);
+   const p=createCoursePhysics(course,1.6*GAME_CREATURE_SCALE,radius);p.reset(x,z);physics.set(id,p);enemies.push(e);
   });phase=error?'defeat':'fighting';
  };
  const colliders=()=>enemies.filter(e=>e.health>0).map(e=>({id:e.id,x:e.x,z:e.z,radius:e.radius,yaw:e.yaw}));

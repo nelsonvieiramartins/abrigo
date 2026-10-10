@@ -3,7 +3,8 @@ export type CourseBox={id:string;x:number;z:number;width:number;depth:number;bot
 export type CourseRamp={id:string;x:number;z:number;width:number;depth:number;near:number;far:number;color:string};
 export type CoursePit={id:string;x:number;z:number;width:number;depth:number};
 export type CoursePoint={id:string;label:string;x:number;z:number;yaw?:number};
-export type GameCourse={size:number;boxes:CourseBox[];ramps:CourseRamp[];pits:CoursePit[];points:CoursePoint[];terrainHeight?:(x:number,z:number)=>number};
+export type CourseCylinder={id:string;x:number;z:number;radius:number;bottom:number;top:number};
+export type GameCourse={size:number;boxes:CourseBox[];ramps:CourseRamp[];pits:CoursePit[];points:CoursePoint[];cylinders?:readonly CourseCylinder[];terrainHeight?:(x:number,z:number)=>number};
 export function createGameCourse(height=1.8):GameCourse{
  const boxes:CourseBox[]=[
   {id:'Tronco de madeira',x:WOOD_TARGET.x,z:WOOD_TARGET.z,width:WOOD_TARGET.radius*2,depth:WOOD_TARGET.radius*2,bottom:0,top:WOOD_TARGET.height,color:'#89603b'},
@@ -54,6 +55,12 @@ export function createCoursePhysics(course:GameCourse,height:number,radius:numbe
    for(let i=0;i<steps;i++){
     const prev={x,z};x+=dx;z+=dz;
     if(enabled&&course.terrainHeight&&(courseGround(course,x,z)??0)>y+.18){x=prev.x;z=prev.z;contacts.add('Encosta do terreno');}
+    if(enabled)for(let pass=0;pass<4;pass++)for(const c of course.cylinders??[]){
+     if(y>=c.top||y+bodyHeight<=c.bottom)continue;
+     const nx=x-c.x,nz=z-c.z,d=Math.hypot(nx,nz),limit=radius+c.radius;if(d>=limit)continue;
+     contacts.add(c.id);
+     if(d>1e-8){x=c.x+nx/d*(limit+1e-5);z=c.z+nz/d*(limit+1e-5);}else{x=prev.x;z=prev.z;}
+    }
     if(enabled)for(let pass=0;pass<4;pass++)for(const b of course.boxes){
      if(y>=b.top-.025||y+bodyHeight<=b.bottom+.005)continue;
      const qx=Math.max(b.x-b.width/2,Math.min(b.x+b.width/2,x)),qz=Math.max(b.z-b.depth/2,Math.min(b.z+b.depth/2,z));

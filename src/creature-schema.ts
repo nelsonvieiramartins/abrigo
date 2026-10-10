@@ -35,7 +35,7 @@ export interface CreatureSpec {
   kind:'creature'; schemaVersion:1; species:CreatureSpecies; name:string; seed:string;
   body:{scale:number;bulk:number};
   appearance:{primary:string;secondary:string;eyes:string;markings:number};
-  anatomy:{legs:number;tail:number;ears:number;wingspan:number;count:number;spread:number;length:number;thickness:number};
+  anatomy:{legs:number;tail:number;ears:number;wingspan:number;count:number;spread:number;length:number;thickness:number;arms?:number};
   behavior:{temperament:'defensive'|'territorial'|'aggressive';health:number;damage:number;speed:number;detection:number;venomous:boolean};
 }
 export const CREATURE_FIELDS:Record<CreatureSpecies,Array<{key:keyof CreatureSpec['anatomy'];label:string;min:number;max:number;step:number}>>={
@@ -44,7 +44,7 @@ export const CREATURE_FIELDS:Record<CreatureSpecies,Array<{key:keyof CreatureSpe
   boar:[{key:'legs',label:'Comprimento das patas',min:.85,max:1.15,step:.01},{key:'length',label:'Comprimento do corpo',min:.85,max:1.15,step:.01},{key:'spread',label:'Largura do corpo',min:.85,max:1.15,step:.01}],
   rat:[{key:'legs',label:'Comprimento das patas',min:.7,max:1.3,step:.01},{key:'spread',label:'Largura do corpo',min:.7,max:1.3,step:.01},{key:'length',label:'Comprimento do corpo',min:.7,max:1.3,step:.01},{key:'ears',label:'Tamanho das orelhas',min:.7,max:1.3,step:.01},{key:'tail',label:'Comprimento da cauda',min:.7,max:1.3,step:.01},{key:'thickness',label:'Espessura da cauda',min:.7,max:1.3,step:.01}],
   ratSdf:[{key:'legs',label:'Comprimento das patas',min:.7,max:1.3,step:.01},{key:'spread',label:'Largura do corpo',min:.7,max:1.3,step:.01},{key:'length',label:'Comprimento do corpo',min:.7,max:1.3,step:.01},{key:'ears',label:'Tamanho das orelhas',min:.7,max:1.3,step:.01},{key:'tail',label:'Comprimento da cauda',min:.7,max:1.3,step:.01},{key:'thickness',label:'Espessura da cauda',min:.7,max:1.3,step:.01}],
-  skeleton:[{key:'legs',label:'Comprimento das pernas',min:.85,max:1.15,step:.01},{key:'thickness',label:'Espessura dos ossos',min:.8,max:1.2,step:.01},{key:'spread',label:'Largura do tórax',min:.85,max:1.15,step:.01}],
+  skeleton:[{key:'legs',label:'Comprimento das pernas',min:.85,max:1.15,step:.01},{key:'arms',label:'Comprimento dos braços',min:.7,max:1.3,step:.01},{key:'thickness',label:'Espessura dos ossos',min:.8,max:1.2,step:.01},{key:'spread',label:'Largura do tórax',min:.85,max:1.15,step:.01}],
   scorpion:[{key:'legs',label:'Comprimento das patas',min:.7,max:1.3,step:.01},{key:'spread',label:'Abertura das patas',min:.7,max:1.3,step:.01},{key:'thickness',label:'Espessura das patas',min:.7,max:1.3,step:.01},{key:'tail',label:'Tamanho da cauda',min:.7,max:1.3,step:.01}],
   spider:[{key:'legs',label:'Comprimento das patas',min:.7,max:1.3,step:.01},{key:'spread',label:'Abertura das patas',min:.7,max:1.3,step:.01},{key:'thickness',label:'Espessura das patas',min:.7,max:1.3,step:.01}],
   tarantulaSdf:[{key:'legs',label:'Comprimento das patas',min:.7,max:1.3,step:.01},{key:'spread',label:'Abertura da postura',min:.7,max:1.3,step:.01},{key:'thickness',label:'Volume do corpo e patas',min:.7,max:1.3,step:.01}],
@@ -88,7 +88,7 @@ export function validateCreatureSpec(raw:unknown):CreatureSpec {
   for(const k of ['primary','secondary','eyes'] as const){const v=q.appearance?.[k];if(typeof v!=='string'||!/^#[0-9a-f]{6}$/i.test(v))throw new Error('Cor inválida: '+k);s.appearance[k]=v;}
   s.appearance.markings=num(q.appearance?.markings,'Marcas',0,1);
   // Only anatomy relevant to this species is admitted; other fields keep canonical defaults.
-  for(const f of CREATURE_FIELDS[s.species])s.anatomy[f.key]=num(q.anatomy?.[f.key],f.label,f.min,f.max);
+  for(const f of CREATURE_FIELDS[s.species]){if(f.key==='arms'&&q.anatomy?.arms===undefined)continue;s.anatomy[f.key]=num(q.anatomy?.[f.key],f.label,f.min,f.max);}
   if(!Number.isInteger(s.anatomy.count))throw new Error('A quantidade de insetos deve ser inteira.');
   if(!['defensive','territorial','aggressive'].includes(q.behavior?.temperament))throw new Error('Temperamento inválido.');
   s.behavior={temperament:q.behavior.temperament,health:num(q.behavior.health,'Vida',1,500),damage:num(q.behavior.damage,'Dano',0,100),speed:num(q.behavior.speed,'Velocidade',.1,12),detection:num(q.behavior.detection,'Percepção',1,40),venomous:false};

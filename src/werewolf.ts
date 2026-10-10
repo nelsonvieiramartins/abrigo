@@ -166,13 +166,15 @@ export function buildWerewolf(spec:CreatureSpec,c:Context,detail:CreatureDetail)
  const garmentPoint=new THREE.Vector3(),garmentBent=new THREE.Vector3();
  const attackClock=createWerewolfAttackClock();
  return (time:number,motion:CreatureMotion)=>{
-   const moving=motion==='move'||motion==='run',running=motion==='run',p=time*(running?9:5),attack=attackClock(time,motion);
+   const sprint=motion==='sprint',moving=motion==='move'||motion==='run'||sprint,running=motion==='run'||sprint,p=time*(sprint?13:running?10:6),attack=attackClock(time,motion);
+   const stride=(sprint?.36:running?.28:.18)*legScale;
+   const gaitHeight=.12+Math.sqrt((upper+lower-.004*legScale)**2-stride**2);
    const wind=attack?.wind??0,hit=attack?.thrust??0,raised=attack?.raised??0,advance=.34*legScale*hit;
-   hips.position.set(0,hipHeight+(attack?-legScale*(wind*.10+hit*.045):moving?Math.abs(Math.sin(p))*.009:Math.sin(time*1.8)*.004),advance);
-   trunk.rotation.set((running?.16:moving?.07:0)-wind*.08+hit*.32,-wind*.06+hit*.04,moving?Math.sin(p)*.018:0);
+   hips.position.set(0,attack?hipHeight-legScale*(wind*.10+hit*.045):moving?gaitHeight+Math.abs(Math.sin(p))*(sprint?.022:running?.016:.009)*legScale:hipHeight+Math.sin(time*1.8)*.004,advance);
+   trunk.rotation.set((sprint?.22:running?.11:0)-wind*.08+hit*.32,-wind*.06+hit*.04,moving?Math.sin(p)*.025:0);
    head.rotation.set(-.045-hit*.18,moving||attack?0:Math.sin(time*.6)*.04,0);jaw.rotation.x=(attack?.bite??0)*.65;
    // Floor-relative foot targets keep the rear support planted during the lunge.
-   for(const l of legs){const a=p+(l.side<0?Math.PI:0),front=l.side<0;solveLeg(l,.12+(attack?(front?.08*legScale*attack.step:0):moving?Math.max(0,Math.sin(a))*(running?.18:.08):0),.08+(attack?(front?.16:-.08)*legScale*hit-advance:moving?-Math.cos(a)*(running?.30:.19):0));}
+   for(const l of legs){const a=p+(l.side<0?Math.PI:0),front=l.side<0;solveLeg(l,.12+(attack?(front?.08*legScale*attack.step:0):moving?Math.max(0,Math.sin(a))*(sprint?.22:running?.16:.085)*legScale:0),attack?.08+(front?.16:-.08)*legScale*hit-advance:moving?-Math.cos(a)*stride:.08);}
    for(const binding of trouserBindings){
      const p=binding.mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
      for(let i=0;i<p.count;i++){
@@ -182,9 +184,9 @@ export function buildWerewolf(spec:CreatureSpec,c:Context,detail:CreatureDetail)
      }
      p.needsUpdate=true;binding.mesh.geometry.computeVertexNormals();binding.mesh.geometry.computeBoundingBox();binding.mesh.geometry.computeBoundingSphere();
    }
-   for(const a of arms){const swing=moving?-Math.cos(p+(a.side<0?Math.PI:0))*(running?.65:.30):0;
+   for(const a of arms){const swing=moving?-Math.cos(p+(a.side<0?Math.PI:0))*(sprint?.95:running?.7:.40):0;
      // Both claws rise overhead, then sweep down together with the torso lunge.
-     a.arm.rotation.set(attack?-raised*2.75-hit*.65:swing,0,a.side*(.12+raised*.12));a.elbow.rotation.x=attack?-.20-raised*.35-hit*.25:running?-.8:-.20;a.hand.rotation.set(hit*-.30,0,a.side*hit*.15);}
+     a.arm.rotation.set(attack?-raised*2.75-hit*.65:swing,0,a.side*(attack?.12+raised*.12:moving?sprint?.24:running?.20:.13:.12));a.elbow.rotation.x=attack?-.20-raised*.35-hit*.25:sprint?-1.35:running?-1.1:moving?-.13:-.20;a.hand.rotation.set(hit*-.30,0,a.side*hit*.15);}
    tail.rotation.y=Math.sin(time*2)*.14;
  };
 }

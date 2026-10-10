@@ -28,6 +28,8 @@ Dependência fixada: `three.quarks@0.16.0`, MIT, copyright 2019 Forrest Sun. O b
 
 ## Verificação
 
+A expansão gráfica do Bioma e a guia Vegetação estão documentadas em `INTEGRACAO-VEGETACAO-BIOMA.md`. O JSON v1 também admite os campos opcionais `vegetation` e `visual`, sem invalidar os mapas anteriores.
+
 `node scripts/test.mjs --game-map`: pincéis, interpolação do chão/render, água/neve, efeitos nativos, persistência e validação, física com alturas negativas e descarte; migração do mapa legado, dois mapas independentes, sobrescrita sem duplicação, importação parcial do original e validação de referência.
 Regressões: `--game-controls`, `--game-combat`, `--creature-categories`; build offline.
 No navegador: pintura, fogueira, ajuste por incremento nativo, salvar/recarregar conservando escala, andar no mapa e console sem erros. Joystick físico, todas as combinações de pincéis e importações Quarks arbitrárias não foram verificados manualmente.

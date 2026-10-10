@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {createMapVegetation} from '../src/map-vegetation';
+const vegetation=createMapVegetation(new THREE.Group(),()=>0,()=>true);
+const records=[-40,-10,10,40].flatMap(x=>[-40,-10,10,40].map(z=>({kind:'grass' as const,variant:0,x,z,scale:1,rotation:0})));
+vegetation.set(records);vegetation.root.updateMatrixWorld(true);
+const meshes=vegetation.root.children as THREE.InstancedMesh[];
+assert.equal(meshes.reduce((n,m)=>n+m.count,0),records.length,'Chunking must not remove instances');
+assert.deepEqual(vegetation.snapshot(),records,'Render optimization must not change saved data');
+const camera=new THREE.OrthographicCamera(-15,15,15,-15,.1,100);camera.position.set(0,30,0);camera.up.set(0,0,-1);camera.lookAt(0,0,0);camera.updateMatrixWorld(true);
+const frustum=new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
+const visible=meshes.filter(m=>frustum.intersectsObject(m)).reduce((n,m)=>n+m.count,0);
+assert(visible>0&&visible<records.length,'Off-screen sectors must be culled');
+const geometries=new Set(meshes.map(m=>m.geometry));assert.equal(geometries.size,1,'Chunks must share geometry');
+vegetation.dispose();assert.equal(vegetation.root.children.length,0);
+console.log(`Vegetation culling fixture: ${visible}/${records.length} instances visible; data preserved and geometry shared.`);

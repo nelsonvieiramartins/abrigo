@@ -1,8 +1,15 @@
 import * as T from 'three';
 import {CELLS,HALF,SURFACES,emptyTerrain,validateTerrain,heightAt,brush,paintLine,fillRegion} from './terrain-data.js';
+import {createAdvancedGrassGeometry,createGrassMaterial,createGroundTextures} from '../bioma/forest-primitives.js';
+import {GLSL_WAVES,createNormalTexture} from '../bioma/water-primitives.js';
 export function createTerrain(scene){
  let data=emptyTerrain(),bed=data,renderBed=data,base='#526b57';
  const waterTime={value:0};
+ const forestStyle={value:1},wind={value:.45};
+ let textureSeed=7249;const random=()=>{textureSeed=(Math.imul(textureSeed,1664525)+1013904223)>>>0;return textureSeed/4294967296;};
+ const groundTextures=typeof document==='undefined'?null:createGroundTextures(random,4);
+ const rippleTexture=typeof document==='undefined'?new T.DataTexture(new Uint8Array([128,128,255,255]),1,1):createNormalTexture();rippleTexture.needsUpdate=true;
+ const cubeTarget=new T.WebGLCubeRenderTarget(128,{generateMipmaps:true,minFilter:T.LinearMipmapLinearFilter}),cubeCamera=new T.CubeCamera(.1,400,cubeTarget);let lastReflection=-Infinity;
  const waterFlow={value:new T.Vector2(.8,0)};
  const waterPhase={value:0},waterPathCount={value:0};let lastWaterFrame=null;
  const waterPathPoints={value:Array.from({length:12},()=>new T.Vector2())};
@@ -14,12 +21,14 @@ export function createTerrain(scene){
  const geometry=new T.BufferGeometry(),positions=new Float32Array((resolution+1)**2*3),colors=new Float32Array(positions.length);
  const indices=[];for(let z=0;z<resolution;z++)for(let x=0;x<resolution;x++){const a=z*(resolution+1)+x,b=a+1,c=a+resolution+1,d=c+1;indices.push(a,c,b,b,c,d);}geometry.setIndex(indices);
  geometry.setAttribute('position',new T.BufferAttribute(positions,3));geometry.setAttribute('color',new T.BufferAttribute(colors,3));
+ const uv=new Float32Array((resolution+1)**2*2);for(let z=0;z<=resolution;z++)for(let x=0;x<=resolution;x++){const i=(z*(resolution+1)+x)*2;uv[i]=x/resolution;uv[i+1]=z/resolution;}geometry.setAttribute('uv',new T.BufferAttribute(uv,2));
  // Keep the editable cell grid, but render continuous, gently irregular borders.
  const surfacePixels=new Uint8Array(CELLS*CELLS*4);
  const surfaceMap=new T.DataTexture(surfacePixels,CELLS,CELLS,T.RGBAFormat);
  surfaceMap.minFilter=surfaceMap.magFilter=T.NearestFilter;
  const surfacePalette=SURFACES.map(s=>new T.Color(s.color||base));
  const material=new T.MeshStandardMaterial({roughness:1,flatShading:false});
+ if(groundTextures){material.bumpMap=groundTextures.bumpMap;material.bumpScale=.08;}
  material.onBeforeCompile=shader=>{
   shader.uniforms.surfaceMap={value:surfaceMap};shader.uniforms.surfacePalette={value:surfacePalette};
   shader.uniforms.waterPass={value:shader.waterPass||0};shader.uniforms.waterTime=waterTime;
@@ -28,10 +37,13 @@ export function createTerrain(scene){
   shader.uniforms.waterFlow=waterFlow;
   shader.uniforms.waterPhase=waterPhase;shader.uniforms.waterPathCount=waterPathCount;shader.uniforms.waterPathPoints=waterPathPoints;
   shader.uniforms.waterFlowMap={value:waterFlowMap};
-  shader.vertexShader='varying vec2 terrainXZ;\n'+shader.vertexShader;
-  shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nterrainXZ = position.xz;');
+  shader.uniforms.forestStyle=forestStyle;shader.uniforms.uWind=wind;shader.uniforms.rippleTexture={value:rippleTexture};
+  shader.uniforms.groundColorMap={value:groundTextures?.colorMap??rippleTexture};
+  shader.vertexShader='varying vec2 terrainXZ;\nvarying float terrainWaterDepth;\n'+shader.vertexShader;
+  shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nterrainXZ = position.xz;terrainWaterDepth = 0.0;');
   shader.fragmentShader=`
    varying vec2 terrainXZ;
+   varying float terrainWaterDepth;
    uniform sampler2D surfaceMap;
    uniform vec3 surfacePalette[${SURFACES.length}];
    uniform float waterPass;
@@ -44,6 +56,9 @@ export function createTerrain(scene){
    uniform float roadAngle;
    uniform float roadBlockScale;
    uniform float roadPattern;
+   uniform float forestStyle;uniform float uWind;uniform sampler2D rippleTexture;
+   uniform sampler2D groundColorMap;
+   ${GLSL_WAVES}
    vec2 waterDirectionAt(vec2 p){
     vec2 fallback=normalize(waterFlow);if(length(waterFlow)<.0001)fallback=vec2(1.0,0.0);
     if(waterPathCount<2.0)return fallback;
@@ -109,6 +124,11 @@ export function createTerrain(scene){
     surfaceColor+=surfaceTone*coverage;total+=coverage;
    }
    diffuseColor.rgb*=surfaceColor/max(total,1e-12);
+   if(forestStyle>.5&&waterPass<.5){
+    float grain=terrainNoise(terrainXZ*18.0),groundPatch=terrainNoise(terrainXZ*.48);
+    diffuseColor.rgb*=.88+.15*groundPatch+.12*grain;
+    if(roadCell<1.5)diffuseColor.rgb*=mix(vec3(1.0),texture2D(groundColorMap,(terrainXZ+50.0)*.26).rgb*1.7,.38);
+   }
    if(abs(roadCell-8.0)<.5)diffuseColor.rgb=medievalPaving(terrainXZ);
    // A restrained shaded lip makes the thin snow layer readable from above.
    float snowCover=0.0;for(int n=0;n<4;n++)snowCover+=weights[n]*(1.0-step(.5,abs(ids[n]-6.0)));
@@ -116,13 +136,15 @@ export function createTerrain(scene){
    diffuseColor.rgb*=1.0-.14*snowLip;
    if(waterPass>.5){
     float wet=0.0;for(int n=0;n<4;n++)wet+=weights[n]*(1.0-step(.5,abs(ids[n]-5.0)));
-    float edgeWidth=max(fwidth(wet),.018);
-    float shore=smoothstep(.5-edgeWidth,.5+edgeWidth,wet);if(shore<.015)discard;
+    // Meet the actual basin/land intersection. The paint's 50% contour
+    // used to expose a dry-looking shelf inside the submerged bank.
+    if(terrainWaterDepth<=.002)discard;
+    float shore=smoothstep(.002,.025,terrainWaterDepth);
     float wave=waterWave(terrainXZ).x;
     float shallows=1.0-smoothstep(.52,.9,wet);
     float crest=smoothstep(.025,.095,wave);
     vec2 flowCoordinates=waterCoordinatesAt(terrainXZ);
-    float foam=(1.0-smoothstep(.52,.73,wet))*smoothstep(.25,.7,
+    float foam=(1.0-smoothstep(.025,.18,terrainWaterDepth))*smoothstep(.25,.7,
      terrainNoise(vec2(flowCoordinates.x-waterPhase,flowCoordinates.y)*5.0));
     vec2 direction=waterDirectionAt(terrainXZ);
     vec2 streamUV=vec2((flowCoordinates.x-waterPhase)*.7,flowCoordinates.y*5.0);
@@ -131,7 +153,18 @@ export function createTerrain(scene){
     diffuseColor.rgb+=vec3(.055,.095,.10)*crest;
     diffuseColor.rgb+=vec3(.10,.16,.15)*streak;
     diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.65,.82,.77),foam*.65);
-    diffuseColor.a=shore*mix(.68,.48,shallows)+foam*shore*.12;
+    diffuseColor.a=shore*mix(.98,.96,shallows);
+    if(forestStyle>.5){
+     vec2 flowUV=vec2(flowCoordinates.x-waterPhase,flowCoordinates.y);
+     float depthT=smoothstep(.50,.97,wet);
+     vec3 body=mix(vec3(.19,.39,.31),vec3(.018,.105,.095),depthT);
+     float milk=clamp(uWind*.55+abs(wave)*1.6,0.0,1.0);
+     body=mix(body,vec3(.40,.52,.46),milk*.2);
+     float breath=.5+.5*sin(flowUV.x*1.7+flowUV.y*1.3-waterTime*1.4);
+     float edgeFoam=(1.0-smoothstep(.025,.18,terrainWaterDepth))*(.45+.55*breath)*(.12+uWind*.25);
+     diffuseColor.rgb=mix(body,vec3(.72,.82,.74),edgeFoam*.6);
+     diffuseColor.a=shore*clamp(mix(.96,.99,depthT)+edgeFoam*.02,0.0,1.0);
+    }
    }
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
@@ -140,10 +173,19 @@ export function createTerrain(scene){
     vec2 direction=waterDirectionAt(terrainXZ),side=vec2(-direction.y,direction.x),worldSlope=direction*slope.x+side*slope.y;
     vec3 rippleNormal=mat3(viewMatrix)*vec3(-worldSlope.x,0.0,-worldSlope.y);
     normal=normalize(normal+rippleNormal);
+    if(forestStyle>.5){
+     vec2 uv=waterCoordinatesAt(terrainXZ);uv.x-=waterPhase;
+     vec3 a=texture2D(rippleTexture,uv*.085+vec2(.021,.013)*waterTime).xyz*2.0-1.0;
+     vec3 b=texture2D(rippleTexture,uv*.205+vec2(-.034,.027)*waterTime).xyz*2.0-1.0;
+     vec3 n=normalize(a+b*.72),w=waveNormal(terrainXZ,waterTime,uWind);
+     vec3 detail=vec3(-w.x+n.x*(.12+uWind*.23),0.0,-w.z+n.y*(.12+uWind*.23));
+     normal=normalize(normal+mat3(viewMatrix)*detail);
+    }
    }
   `);
  };
  const mesh=new T.Mesh(geometry,material);mesh.receiveShadow=true;scene.add(mesh);
+ mesh.onBeforeRender=()=>{waterTime.value=performance.now()/1000;};
  const curbGeometry=new T.BoxGeometry(1,1,1),cornerGeometry=new T.CylinderGeometry(.09,.09,.202,12),curbMaterial=new T.MeshStandardMaterial({color:'#a5a69f',roughness:.9});let curbs=null,curbCorners=null;
  function rebuildCurbs(){
   if(curbs){scene.remove(curbs);curbs.dispose();curbs=null;}
@@ -165,8 +207,16 @@ export function createTerrain(scene){
  const waterGeometry=new T.BufferGeometry(),waterPositions=new Float32Array(positions.length);
  waterGeometry.setIndex(indices);
  waterGeometry.setAttribute('position',new T.BufferAttribute(waterPositions,3));
- const waterMaterial=new T.MeshStandardMaterial({transparent:true,depthWrite:false,roughness:.22,metalness:.12,side:T.DoubleSide});
- waterMaterial.onBeforeCompile=shader=>{shader.waterPass=1;material.onBeforeCompile(shader);};
+ const waterMaterial=new T.MeshPhysicalMaterial({transparent:true,depthWrite:false,roughness:.12,metalness:0,ior:1.333,clearcoat:.55,clearcoatRoughness:.1,envMap:cubeTarget.texture,envMapIntensity:.75,side:T.DoubleSide});
+ waterMaterial.onBeforeCompile=shader=>{shader.waterPass=1;material.onBeforeCompile(shader);
+  shader.uniforms.forestStyle=forestStyle;shader.uniforms.uWind=wind;
+  shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>\n uniform float forestStyle;uniform float uWind;uniform float waterTime;attribute float aDepth;${GLSL_WAVES}`)
+   .replace('terrainWaterDepth = 0.0;','terrainWaterDepth = aDepth;\n if(forestStyle>.5)transformed.y+=waveHeight(position.xz,waterTime,uWind)*smoothstep(.0,.34,aDepth);');
+  // Calm shallow water should not turn the whole bank into a white specular strip.
+  shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=max(roughnessFactor,mix(.65,.12,smoothstep(.025,.4,terrainWaterDepth)));');
+ };
+ waterMaterial.customProgramCacheKey=()=> 'bioma-editor-water-v2-shore';
+ waterGeometry.setAttribute('aDepth',new T.BufferAttribute(new Float32Array((resolution+1)**2),1));
  const water=new T.Mesh(waterGeometry,waterMaterial);water.renderOrder=2;scene.add(water);
  water.onBeforeRender=()=>{const now=performance.now()/1000,delta=lastWaterFrame===null?0:Math.min(.1,Math.max(0,now-lastWaterFrame));lastWaterFrame=now;waterTime.value=now;waterPhase.value+=waterFlow.value.length()*delta;};
  const waterPathGeometry=new T.BufferGeometry(),waterPathMaterial=new T.LineBasicMaterial({color:0x63e6ff,depthTest:false,transparent:true,opacity:.9});
@@ -179,11 +229,13 @@ export function createTerrain(scene){
  const lineGeometry=new T.BufferGeometry();const line=new T.Line(lineGeometry,new T.LineDashedMaterial({color:0xffdea4,dashSize:.5,gapSize:.3,depthTest:false}));line.renderOrder=20;line.visible=false;scene.add(line);
  // Lightweight, deterministic ground scatter: instances add real silhouette and
  // volume without turning every blade, flower and pebble into a separate object.
- const tuftGeometry=new T.ConeGeometry(.055,.38,5);tuftGeometry.translate(0,.19,0);
- const stoneGeometry=new T.IcosahedronGeometry(.12,1);stoneGeometry.translate(0,.1,0);
+ const classicTuftGeometry=new T.ConeGeometry(.055,.38,5);classicTuftGeometry.translate(0,.19,0);
+ const tuftGeometry=createAdvancedGrassGeometry();
+ const tuftMaterial=createGrassMaterial({uTime:waterTime,uWind:wind});
+ const stoneGeometry=new T.IcosahedronGeometry(.12,3);const rockPositions=stoneGeometry.attributes.position;for(let i=0;i<rockPositions.count;i++){const x=rockPositions.getX(i),y=rockPositions.getY(i),z=rockPositions.getZ(i),d=1+Math.sin(x*66+y*40)*.075+Math.cos(z*75-y*33)*.055;rockPositions.setXYZ(i,x*d,y*d,z*d);}stoneGeometry.computeVertexNormals();stoneGeometry.computeBoundingBox();stoneGeometry.translate(0,-stoneGeometry.boundingBox.min.y,0);
  const flowerGeometry=new T.OctahedronGeometry(.065,0);flowerGeometry.translate(0,.34,0);
  const detailMaterial=new T.MeshStandardMaterial({color:0xffffff,roughness:1,metalness:0});
- const tufts=new T.InstancedMesh(tuftGeometry,detailMaterial,5000);tufts.name='Detalhes · Grama e matinhos';tufts.receiveShadow=true;tufts.count=0;scene.add(tufts);
+ const tufts=new T.InstancedMesh(tuftGeometry,tuftMaterial,5000);tufts.name='Detalhes · Grama e matinhos';tufts.receiveShadow=true;tufts.count=0;scene.add(tufts);
  const stones=new T.InstancedMesh(stoneGeometry,detailMaterial,1800);stones.name='Detalhes · Pedrinhas';stones.receiveShadow=true;stones.count=0;scene.add(stones);
  const flowers=new T.InstancedMesh(flowerGeometry,detailMaterial,800);flowers.name='Detalhes · Flores';flowers.receiveShadow=true;flowers.count=0;scene.add(flowers);
  const scatterTransform=new T.Object3D(),scatterColor=new T.Color();
@@ -196,12 +248,13 @@ export function createTerrain(scene){
    const grass=surface===1,px=x-HALF+.12+scatterHash(x,z,1)*.76,pz=z-HALF+.12+scatterHash(x,z,2)*.76,y=heightAt(renderBed,px,pz);
    if(scatterHash(x,z,3)<(grass?.52:.075)&&tuftCount<tufts.instanceMatrix.count){
     const height=(grass?.42:.28)+scatterHash(x,z,4)*(grass?.46:.3),width=.48+scatterHash(x,z,5)*.56;
-    scatterTransform.position.set(px,y+.012,pz);scatterTransform.rotation.set(0,scatterHash(x,z,6)*Math.PI*2,(scatterHash(x,z,7)-.5)*.18);scatterTransform.scale.set(width,height,width);scatterTransform.updateMatrix();
+    scatterTransform.position.set(px,y+.005,pz);scatterTransform.rotation.set(0,scatterHash(x,z,6)*Math.PI*2,0);scatterTransform.scale.set(width*.55,height*.55,width*.55);scatterTransform.updateMatrix();
     tufts.setMatrixAt(tuftCount,scatterTransform.matrix);scatterColor.set(grass?(scatterHash(x,z,8)>.72?'#4f8b3d':'#326b35'):'#4d7141');tufts.setColorAt(tuftCount++,scatterColor);
    }
    if(scatterHash(x,z,9)<(grass?.025:.055)&&stoneCount<stones.instanceMatrix.count){
     const sx=.55+scatterHash(x,z,10)*1.25,sy=.45+scatterHash(x,z,11)*.55,sz=.55+scatterHash(x,z,12)*1.15;
-    scatterTransform.position.set(px+(scatterHash(x,z,13)-.5)*.35,y+.005,pz+(scatterHash(x,z,14)-.5)*.35);scatterTransform.rotation.set(scatterHash(x,z,15)*.35,scatterHash(x,z,16)*Math.PI*2,scatterHash(x,z,17)*.35);scatterTransform.scale.set(sx,sy,sz);scatterTransform.updateMatrix();
+    const rockX=px+(scatterHash(x,z,13)-.5)*.35,rockZ=pz+(scatterHash(x,z,14)-.5)*.35;
+    scatterTransform.position.set(rockX,heightAt(renderBed,rockX,rockZ)-.01,rockZ);scatterTransform.rotation.set(0,scatterHash(x,z,16)*Math.PI*2,0);scatterTransform.scale.set(sx,sy,sz);scatterTransform.updateMatrix();
     stones.setMatrixAt(stoneCount,scatterTransform.matrix);scatterColor.set(scatterHash(x,z,18)>.5?'#777a6e':'#5f655b');stones.setColorAt(stoneCount++,scatterColor);
    }
    if(grass&&scatterHash(x,z,19)<.045&&flowerCount<flowers.instanceMatrix.count){
@@ -247,9 +300,12 @@ export function createTerrain(scene){
    renderBed.heights[idx]=h;
    waterPositions[k]=positions[k]=u-HALF;k++;
    waterPositions[k]=interpolate(data,u,v)-(data.waterDepth??.04);positions[k]=h;k++;
+   // Signed depth keeps the shoreline interpolation at the true intersection.
+   waterGeometry.attributes.aDepth.setX(idx,waterPositions[k-1]-h);
    waterPositions[k]=positions[k]=v-HALF;k++;
   }
   waterGeometry.attributes.position.needsUpdate=true;waterGeometry.computeVertexNormals();waterGeometry.computeBoundingSphere();water.visible=data.surfaces.includes(5);
+  waterGeometry.attributes.aDepth.needsUpdate=true;
   geometry.attributes.position.needsUpdate=true;geometry.attributes.color.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingSphere();
   k=0;for(let j=0;j<=CELLS;j++)for(let i=0;i<CELLS;i++)for(const [x,z] of [[i,j],[i+1,j],[j,i],[j,i+1]]){gridPoints[k++]=x-HALF;gridPoints[k++]=bed.heights[z*(CELLS+1)+x]+.014;gridPoints[k++]=z-HALF;}
   gridGeometry.attributes.position.needsUpdate=true;gridGeometry.computeBoundingSphere();
@@ -284,8 +340,13 @@ export function createTerrain(scene){
   waterFlowMap.needsUpdate=true;
  }
  let disposed=false;
- function dispose(){if(disposed)return;disposed=true;const geometries=new Set(),materials=new Set();for(const o of [mesh,water,waterPathLine,grid,cursor,line,tufts,stones,flowers,curbs,curbCorners]){if(!o)continue;o.removeFromParent();geometries.add(o.geometry);materials.add(o.material);if(o.isInstancedMesh)o.dispose();}geometries.add(curbGeometry);geometries.add(cornerGeometry);materials.add(curbMaterial);geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());surfaceMap.dispose();waterFlowMap.dispose();}
- rebuild();return {mesh,grid,cursor,line,rebuild,set,setCursor,previewLine,dispose,
+ function dispose(){if(disposed)return;disposed=true;const geometries=new Set(),materials=new Set();for(const o of [mesh,water,waterPathLine,grid,cursor,line,tufts,stones,flowers,curbs,curbCorners]){if(!o)continue;o.removeFromParent();geometries.add(o.geometry);materials.add(o.material);if(o.isInstancedMesh)o.dispose();}geometries.add(curbGeometry);geometries.add(cornerGeometry);geometries.add(tuftGeometry);geometries.add(classicTuftGeometry);materials.add(tuftMaterial);materials.add(curbMaterial);geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());surfaceMap.dispose();waterFlowMap.dispose();rippleTexture.dispose();cubeTarget.dispose();}
+ const disposeTerrain=dispose;
+ function disposeAll(){if(disposed)return;disposeTerrain();groundTextures?.colorMap.dispose();groundTextures?.bumpMap.dispose();}
+ rebuild();return {mesh,grid,cursor,line,rebuild,set,setCursor,previewLine,dispose:disposeAll,
+  surfaceAt:(x,z)=>data.surfaces[Math.min(CELLS-1,Math.max(0,Math.floor(z+HALF)))*CELLS+Math.min(CELLS-1,Math.max(0,Math.floor(x+HALF)))],
+  setVisual(value){forestStyle.value=value.style==='forest'?1:0;wind.value=value.wind;material.bumpScale=forestStyle.value?.08:0;tufts.geometry=forestStyle.value?tuftGeometry:classicTuftGeometry;tufts.material=forestStyle.value?tuftMaterial:detailMaterial;waterMaterial.envMapIntensity=forestStyle.value?.75:0;waterMaterial.clearcoat=forestStyle.value?.55:0;},
+  renderReflection(renderer,sceneRef){const now=performance.now();if(!water.visible||!forestStyle.value||now-lastReflection<1000)return;lastReflection=now;const prior=water.visible,background=sceneRef.background,auto=renderer.shadowMap.autoUpdate,pending=renderer.shadowMap.needsUpdate;try{water.visible=false;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=false;sceneRef.background=background??new T.Color('#92aeaf');cubeCamera.position.set(0,12,0);cubeCamera.update(renderer,sceneRef);}finally{water.visible=prior;sceneRef.background=background;renderer.shadowMap.autoUpdate=auto;renderer.shadowMap.needsUpdate=pending;}},
   heightAt:(x,z)=>heightAt(renderBed,x,z),snapshot:()=>({...data,heights:data.heights.slice(),surfaces:data.surfaces.slice(),roadCaps:data.roadCaps?.slice(),waterPath:data.waterPath?.map(point=>point.slice())}),
   setBase:color=>{base=color;rebuild();},
   waterDepth:()=>data.waterDepth??.04,

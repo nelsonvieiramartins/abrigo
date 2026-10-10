@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {loadGamePerformance,validateGamePerformance,PERFORMANCE_PROFILES,PERFORMANCE_KEY,MAP_EDITOR_PERFORMANCE} from '../src/game-performance';
+for(const profile of Object.values(PERFORMANCE_PROFILES))assert.deepEqual(validateGamePerformance(profile.settings),profile.settings);
+assert.deepEqual(loadGamePerformance({getItem:()=>null}),PERFORMANCE_PROFILES.balanced.settings);
+assert.deepEqual(loadGamePerformance({getItem:()=>'{bad'}),PERFORMANCE_PROFILES.balanced.settings);
+assert.deepEqual(loadGamePerformance({getItem:()=>JSON.stringify(PERFORMANCE_PROFILES.low.settings)}),PERFORMANCE_PROFILES.low.settings);
+for(const bad of [{resolution:4},{shadows:8192},{fps:-1},{post:'yes'},{reflections:null}])assert.throws(()=>validateGamePerformance({...PERFORMANCE_PROFILES.high.settings,...bad}));
+assert.notEqual(PERFORMANCE_KEY,'abrigo-game-map-v1');
+const settings=loadGamePerformance({getItem:()=>null});settings.shadows=0;
+assert.equal(PERFORMANCE_PROFILES.balanced.settings.shadows,2048);
+assert.deepEqual(validateGamePerformance(MAP_EDITOR_PERFORMANCE),MAP_EDITOR_PERFORMANCE);
+assert.equal(MAP_EDITOR_PERFORMANCE.fps,30);assert.equal(MAP_EDITOR_PERFORMANCE.post,false);assert.equal(MAP_EDITOR_PERFORMANCE.reflections,false);assert.equal(MAP_EDITOR_PERFORMANCE.shadows,1024);
+console.log('Performance profiles, independent settings, persisted loading and invalid values passed.');

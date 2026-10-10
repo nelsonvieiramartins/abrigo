@@ -127,3 +127,14 @@
 .map-workspace #map-library-status{position:absolute;bottom:0;left:0;right:0;z-index:1;margin:0;padding:10px 18px;background:#18221dda;font-size:11px;line-height:1.4}
 @media(max-width:1150px) and (min-width:851px){.map-workspace{grid-template-columns:240px minmax(300px,1fr) 210px}.map-workspace .map-floating-toolbar small{display:none}.map-workspace .stage-heading{top:65px}}
 @media(max-width:850px){.map-workspace{height:auto;min-height:0;grid-template-columns:1fr;grid-template-rows:auto auto 55vh auto auto}.map-workspace .map-document-header,.map-workspace .map-top-controls{grid-column:1;flex-wrap:wrap}.map-workspace .map-stage{grid-column:1;grid-row:3}.map-workspace .map-left-dock{grid-column:1;grid-row:4}.map-workspace .map-right-dock{grid-column:1;grid-row:5}.map-workspace .map-document-header .game-test-actions,.map-workspace .map-top-controls>.game-test-actions:last-child{margin-left:0}.map-workspace .map-camera-tools{bottom:65px}.map-workspace .stage-heading{top:65px}}
+.environment-controls{display:grid;gap:10px}.environment-controls h3{font-size:13px;letter-spacing:.08em}.environment-controls label{display:grid;gap:5px;font-size:12px}.environment-controls output{color:#b3ce6c;justify-self:end}.environment-controls input[type=range]{width:100%;accent-color:#b3ce6c}.environment-controls select{width:100%}.environment-controls p{font-size:11px;line-height:1.5}.game-environment-quick{width:260px;background:#17241eef;border:1px solid #69775c;border-radius:7px;padding:10px;color:#e1e8d2}.game-environment-quick[open]{max-height:70vh;overflow:auto}.game-environment-quick summary{cursor:pointer;font-size:13px;font-weight:bold}.game-environment-quick .environment-controls{margin-top:12px}.game-environment-quick select{color:#e1e8d2;background:#17241e;padding:8px;border:1px solid #69775c}.game-environment-quick .button{white-space:normal}.game-bindings>details{margin-bottom:18px;padding:12px;border:1px solid #495441;border-radius:6px}.game-bindings>details>summary{cursor:pointer}
+.creature-preset-row{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.creature-preset-row[hidden]{display:none}
+.creature-preset-row .preset{margin-bottom:0}
+.creature-default-save{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 8px;border:1px solid var(--border,#43503d);border-radius:5px;background:transparent;color:inherit;font:inherit;font-size:10px;cursor:pointer}
+.creature-default-save:disabled{opacity:.35;cursor:default}
+.creature-default-save:not(:disabled):hover{background:#9aaf6b25}
+.game-performance-controls{padding:8px;border:1px solid #68775b55;border-radius:6px;margin:8px 0;max-height:65vh;overflow:auto}
+.game-performance-controls summary{cursor:pointer;font-weight:700}
+.game-performance-stats{font:11px monospace}
+.game-arena-full-controls .game-performance-controls{background:#18291fee;color:#e8eed8;max-width:330px}

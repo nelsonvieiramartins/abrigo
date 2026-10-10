@@ -191,6 +191,7 @@ export function buildDetailedSkeleton(spec:CreatureSpec,c:SkeletonContext,detail
  }
  joint(pelvis,[0,.012,-.046],.071,[.7,1.3,.56],inner);
  const armRig:Array<{side:number;shoulder:THREE.Group;elbow:THREE.Group;hand:THREE.Group}>=[];
+ const armLength=spec.anatomy.arms??1;
  for(const side of [-1,1]){
   const suffix=side>0?'L':'R',shoulder=group('shoulder'+suffix,chest,[side*.279*width,.245,0]);
   shoulder.rotation.z=side*.14;
@@ -217,6 +218,8 @@ export function buildDetailedSkeleton(spec:CreatureSpec,c:SkeletonContext,detail
   digitBone(hand,thumbBase,thumbKnuckle,.014*thick);joint(hand,thumbKnuckle,.0125*thick);
   digitBone(hand,thumbKnuckle,thumbEnd,.0115*thick);joint(hand,thumbEnd,.0105*thick);digitBone(hand,thumbEnd,thumbTip,.010*thick);
   socket('hand'+suffix,hand,[0,-.06,.04]);armRig.push({side,shoulder,elbow,hand});
+  // Scale the bone profiles and joint spacing, not the hand or shoulder attachment.
+  elbow.position.y*=armLength;hand.position.y*=armLength;
  }
  const legRig:Array<{side:number;hip:THREE.Group;knee:THREE.Group;foot:THREE.Group}>=[];
  for(const side of [-1,1]){
@@ -239,6 +242,7 @@ export function buildDetailedSkeleton(spec:CreatureSpec,c:SkeletonContext,detail
  }
  socket('head',head);socket('mouth',jaw,[0,-.06,.21]);socket('back',chest,[0,.09,-.11]);socket('target',chest,[0,.07,0]);
  // Merge independent rigid pieces to one mesh per articulation and material.
+ for(const a of armRig)for(const parent of [a.shoulder,a.elbow])for(const parts of batches.get(parent)?.values()??[])for(const geometry of parts)geometry.scale(1,armLength,1);
  for(const [parent,batch] of batches)for(const [m,parts] of batch){
   const geo=mergeGeometries(parts,false);if(!geo)throw Error('Não foi possível unir os ossos.');parts.forEach(g=>g.dispose());geo.computeBoundingSphere();geometries.add(geo);
   const o=new THREE.Mesh(geo,m);o.name=parent.name+'-'+(m===bone?'bones':m===inner?'inner':'cavities');o.castShadow=true;o.receiveShadow=true;parent.add(o);
@@ -264,14 +268,16 @@ export function buildDetailedSkeleton(spec:CreatureSpec,c:SkeletonContext,detail
   if(motion==='attack'&&(lastMotion!=='attack'||time<lastTime))attackStart=time;
   for(const [o,r] of rest){o.position.copy(r.p);o.quaternion.copy(r.q);o.scale.copy(r.s);}
   const sprint=motion==='sprint',gait=motion==='move'||motion==='run'||sprint,running=motion==='run';
-  // Character sprint cadence and stride, solved by the rigid skeleton leg IK.
-  const stride=(sprint?.36:running?.145:.095)*spec.anatomy.legs,freq=sprint?13:running?9:5.6;
-  body.position.y=gait?(sprint?-.10*spec.anatomy.legs:running?-.025:-.009)+Math.max(0,Math.sin(time*freq*2))*(sprint?.022*spec.anatomy.legs:running?.014:.008):motion==='idle'?Math.sin(time*1.6)*.002:0;
-  for(const leg of legRig){const phase=time*freq+(leg.side>0?0:Math.PI),swing=Math.sin(phase);legPose(leg,gait?-Math.cos(phase)*stride:0,gait?Math.max(0,swing)*(sprint?.22*spec.anatomy.legs:running?.063:.045):0);}
-  if(sprint){chest.rotation.x=.22;chest.rotation.z=Math.sin(time*freq)*.025;}
-  chest.rotation.y=gait?Math.sin(time*freq)*.055:Math.sin(time*.85)*.008;
-  head.rotation.y=gait?-chest.rotation.y*.6:Math.sin(time*.65)*.018;
-  armRig.forEach(a=>{a.shoulder.rotation.x=gait?-Math.cos(time*freq+(a.side>0?0:Math.PI))*(sprint?.95:running?.65:.36):.045+Math.sin(time*1.3)*.015;if(sprint)a.shoulder.rotation.z=a.side*.24;a.elbow.rotation.x=sprint?-1.35:gait?-.28:-.07;a.hand.rotation.set(0,-a.side*Math.PI/2,0);});
+  // Match the character gait (character.ts); adapt only the reach to this rigid bone rig.
+  const stride=(sprint?.36:running?.28:.18)*spec.anatomy.legs,freq=sprint?13:running?10:6;
+  const phase=time*freq,length=L1+L2,lateral=.06*spec.anatomy.legs;
+  const gaitHeight=Math.sqrt((length-.004*spec.anatomy.legs)**2-stride**2-lateral**2);
+  body.position.y=gait?gaitHeight-length*.985+Math.abs(Math.sin(phase))*(sprint?.022:running?.016:.009)*spec.anatomy.legs:motion==='idle'?Math.sin(time*1.6)*.002:0;
+  for(const leg of legRig){const p=phase+(leg.side<0?Math.PI:0);legPose(leg,gait?-Math.cos(p)*stride:0,gait?Math.max(0,Math.sin(p))*(sprint?.22:running?.16:.085)*spec.anatomy.legs:0);}
+  if(gait){chest.rotation.x=sprint?.22:running?.11:0;chest.rotation.z=Math.sin(phase)*.025;}
+  chest.rotation.y=gait?0:Math.sin(time*.85)*.008;
+  head.rotation.y=gait?0:Math.sin(time*.65)*.018;
+  armRig.forEach(a=>{a.shoulder.rotation.x=gait?-Math.cos(phase+(a.side<0?Math.PI:0))*(sprint?.95:running?.7:.40):.045+Math.sin(time*1.3)*.015;if(gait)a.shoulder.rotation.z=a.side*(sprint?.24:running?.20:.13);a.elbow.rotation.x=sprint?-1.35:running?-1.1:gait?-.13:-.07;a.hand.rotation.set(0,-a.side*Math.PI/2,0);});
   if(motion==='attack'){
    const t=Math.max(0,time-attackStart),wind=smooth(0,.22,t),hit=smooth(.22,.38,t),recover=1-smooth(.46,.9,t),pose=wind*recover;
    chest.rotation.y=(-.25*wind+.58*hit)*recover;chest.rotation.x=.06*pose;head.rotation.y=-chest.rotation.y*.65;

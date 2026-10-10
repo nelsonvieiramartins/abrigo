@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import './game-performance';
 import {GAME_COMMANDS,GAME_CONTROL_STORE,createGameController,defaultGameControls,loadGameControls,validateGameControls,actionDuration} from '../src/game-controls';
 import {MOTIONS,type Motion} from '../src/schema';
 import {resolveGameMovement,gameTestObstacles,proceduralTestCharacters} from '../src/game-collision';
